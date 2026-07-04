@@ -538,16 +538,34 @@ select option{background:var(--steel);color:var(--white)}
 <div id="pane-settings" class="pane">
 
   <!-- PIN LOCK SCREEN -->
-  <div id="settingsLock" style="text-align:center;padding:50px 20px 40px">
-    <div style="font-size:56px;margin-bottom:16px">🔒</div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:var(--white);margin-bottom:6px">Settings — Restricted</div>
-    <div style="font-size:12px;color:var(--fog);margin-bottom:24px;line-height:1.7">Only Mahesh (ATF Admin) can access settings.<br/>Enter your 4-digit PIN to continue.</div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px" id="pinDots">
+  <div id="settingsLock" style="text-align:center;padding:40px 20px 30px">
+    <div style="font-size:48px;margin-bottom:12px">🔒</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;color:var(--white);margin-bottom:6px">Settings — Restricted</div>
+    <div style="font-size:12px;color:var(--fog);margin-bottom:20px;line-height:1.7">Enter your PIN to continue.</div>
+
+    <!-- Access level selector -->
+    <div style="display:flex;gap:8px;max-width:260px;margin:0 auto 18px">
+      <button onclick="setAccessLevel('supervisor')" id="lvl-supervisor" style="flex:1;padding:9px;border-radius:var(--r);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid #3b82f6;background:rgba(59,130,246,.15);color:#93c5fd;transition:all .2s">
+        👷 Supervisor
+      </button>
+      <button onclick="setAccessLevel('mahesh')" id="lvl-mahesh" style="flex:1;padding:9px;border-radius:var(--r);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--slate);background:var(--iron);color:var(--fog);transition:all .2s">
+        👑 Mahesh
+      </button>
+    </div>
+
+    <!-- Access level description -->
+    <div id="accessDesc" style="font-size:11px;margin-bottom:18px;padding:8px 12px;border-radius:var(--r);background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;max-width:260px;margin-left:auto;margin-right:auto;line-height:1.6">
+      Supervisor access: paste Google Sheets URL only
+    </div>
+
+    <!-- PIN dots -->
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px">
       <div id="pd1" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
       <div id="pd2" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
       <div id="pd3" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
       <div id="pd4" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
     </div>
+
     <!-- PIN PAD -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:220px;margin:0 auto 16px">
       <button onclick="pinPress('1')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">1</button>
@@ -564,10 +582,41 @@ select option{background:var(--steel);color:var(--white)}
       <button onclick="pinPress('⌫')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--amber);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">⌫</button>
     </div>
     <div id="pinError" style="font-size:11px;color:var(--red);height:16px;margin-bottom:8px"></div>
-    <div style="font-size:10px;color:var(--fog)">Default PIN: <strong style="color:var(--amber)">1234</strong> · Change in settings after unlocking</div>
+    <div style="font-size:10px;color:var(--fog)">
+      Supervisor default PIN: <strong style="color:#93c5fd">5678</strong><br/>
+      Mahesh default PIN: <strong style="color:var(--amber)">1234</strong>
+    </div>
   </div>
 
-  <!-- SETTINGS CONTENT (hidden until PIN entered) -->
+  <!-- SUPERVISOR CONTENT — URL only -->
+  <div id="supervisorContent" style="display:none">
+    <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:var(--r2);padding:13px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:24px">👷</span>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:#93c5fd;letter-spacing:.5px">SUPERVISOR ACCESS</div>
+        <div style="font-size:11px;color:var(--fog);margin-top:2px;line-height:1.5">Paste the Google Sheets URL below. This connects your shift logs to Mahesh's dashboard.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="ch-icon">📊</span><span class="ch-title">GOOGLE SHEETS URL</span><span class="ch-tag">Paste once — done</span></div>
+      <div class="card-body">
+        <div id="supConnBanner" style="border-radius:var(--r);padding:9px 11px;margin-bottom:10px;font-size:11px;line-height:1.6;border:1px solid var(--slate);background:var(--steel);color:var(--fog)">
+          ⚡ Not connected — your logs save on this device only.
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label>Apps Script URL (get from Mahesh)</label>
+          <input id="supSheetsUrl" placeholder="https://script.google.com/macros/s/.../exec"/>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="testSupConnection()" style="flex:1;padding:9px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🔌 Test</button>
+          <button onclick="saveSupUrl()" style="flex:1;padding:9px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Save & Connect</button>
+        </div>
+      </div>
+    </div>
+    <button onclick="lockSettings()" style="width:100%;padding:11px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px">🔒 Close Settings</button>
+  </div>
+
+  <!-- MAHESH FULL CONTENT -->
   <div id="settingsContent" style="display:none">
 
   <!-- Connection status -->
@@ -904,21 +953,26 @@ function formatHeader(sheet, cols) {
 
   <!-- Change PIN -->
   <div class="card">
-    <div class="card-hdr"><span class="ch-icon">🔐</span><span class="ch-title">CHANGE SETTINGS PIN</span><span class="ch-tag">Mahesh only</span></div>
+    <div class="card-hdr"><span class="ch-icon">🔐</span><span class="ch-title">CHANGE PINs</span><span class="ch-tag">Mahesh only</span></div>
     <div class="card-body">
-      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.6">Change the 4-digit PIN used to access Settings. Default is 1234 — change it immediately.</div>
+      <div style="font-size:11px;font-weight:600;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">👑 Change Mahesh PIN</div>
       <div class="frow">
-        <div class="fg">
-          <label>Current PIN</label>
-          <input type="password" id="currentPin" maxlength="4" placeholder="Current 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/>
-        </div>
-        <div class="fg">
-          <label>New PIN</label>
-          <input type="password" id="newPin" maxlength="4" placeholder="New 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/>
-        </div>
+        <div class="fg"><label>Current Mahesh PIN</label><input type="password" id="currentPin" maxlength="4" placeholder="Current PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/></div>
+        <div class="fg"><label>New Mahesh PIN</label><input type="password" id="newPin" maxlength="4" placeholder="New 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/></div>
       </div>
-      <button onclick="changePin()" style="width:100%;padding:10px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px">🔐 Change PIN</button>
-      <button onclick="lockSettings()" style="width:100%;padding:9px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-top:7px">🔒 Lock Settings</button>
+      <button onclick="changePin()" style="width:100%;padding:9px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px">🔐 Change Mahesh PIN</button>
+
+      <div style="height:1px;background:var(--slate);margin-bottom:12px"></div>
+
+      <div style="font-size:11px;font-weight:600;color:#93c5fd;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">👷 Change Supervisor PIN</div>
+      <div style="font-size:11px;color:var(--fog);margin-bottom:8px;line-height:1.5">Supervisors use this PIN to access the URL-only view. Share this PIN with supervisors when they need to connect their phone.</div>
+      <div class="frow">
+        <div class="fg"><label>Current Supervisor PIN</label><input type="password" id="currentSupPin" maxlength="4" placeholder="Current PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/></div>
+        <div class="fg"><label>New Supervisor PIN</label><input type="password" id="newSupPin" maxlength="4" placeholder="New 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/></div>
+      </div>
+      <button onclick="changeSupPin()" style="width:100%;padding:9px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:var(--r);color:#93c5fd;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">🔐 Change Supervisor PIN</button>
+
+      <button onclick="lockSettings()" style="width:100%;padding:9px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🔒 Lock Settings</button>
     </div>
   </div>
 
@@ -2134,16 +2188,39 @@ function exportTCCSV(){
 }
 
 // ═══════════════════════════════════════════
-// PIN LOCK SYSTEM
+// TWO-LEVEL PIN LOCK SYSTEM
 // ═══════════════════════════════════════════
 let pinEntry = '';
 let settingsUnlocked = false;
+let currentAccessLevel = 'supervisor';
 
-function getPin(){ return localStorage.getItem('atf_cpc_pin') || '1234'; }
+function getMaheshPin(){ return localStorage.getItem('atf_cpc_pin') || '1234'; }
+function getSupervisorPin(){ return localStorage.getItem('atf_cpc_sup_pin') || '5678'; }
+
+function setAccessLevel(level){
+  currentAccessLevel = level;
+  pinEntry = '';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  const supBtn = document.getElementById('lvl-supervisor');
+  const mahBtn = document.getElementById('lvl-mahesh');
+  const desc   = document.getElementById('accessDesc');
+  if(level==='supervisor'){
+    supBtn.style.border='2px solid #3b82f6';supBtn.style.background='rgba(59,130,246,.15)';supBtn.style.color='#93c5fd';
+    mahBtn.style.border='2px solid var(--slate)';mahBtn.style.background='var(--iron)';mahBtn.style.color='var(--fog)';
+    desc.style.background='rgba(59,130,246,.08)';desc.style.borderColor='rgba(59,130,246,.2)';desc.style.color='#93c5fd';
+    desc.textContent='Supervisor access: paste Google Sheets URL only';
+  } else {
+    mahBtn.style.border='2px solid var(--amber)';mahBtn.style.background='rgba(245,158,11,.1)';mahBtn.style.color='var(--amber)';
+    supBtn.style.border='2px solid var(--slate)';supBtn.style.background='var(--iron)';supBtn.style.color='var(--fog)';
+    desc.style.background='rgba(245,158,11,.06)';desc.style.borderColor='rgba(245,158,11,.2)';desc.style.color='var(--amber)';
+    desc.textContent='Mahesh access: full settings — tool codes, sites, supervisors, thresholds';
+  }
+}
 
 function pinPress(k){
-  if(k==='⌫'){ pinEntry=pinEntry.slice(0,-1); }
-  else if(k!==''&&pinEntry.length<4){ pinEntry+=String(k); }
+  if(k==='⌫') pinEntry=pinEntry.slice(0,-1);
+  else if(k!==''&&pinEntry.length<4) pinEntry+=String(k);
   updatePinDots();
   if(pinEntry.length===4) checkPin();
 }
@@ -2151,66 +2228,104 @@ function pinPress(k){
 function updatePinDots(){
   for(let i=1;i<=4;i++){
     const dot=document.getElementById('pd'+i);
-    dot.style.background = i<=pinEntry.length ? 'var(--amber)' : 'transparent';
-    dot.style.borderColor = i<=pinEntry.length ? 'var(--amber)' : 'var(--slate)';
+    const color=currentAccessLevel==='mahesh'?'var(--amber)':'#3b82f6';
+    dot.style.background=i<=pinEntry.length?color:'transparent';
+    dot.style.borderColor=i<=pinEntry.length?color:'var(--slate)';
   }
 }
 
 function checkPin(){
-  if(pinEntry===getPin()){
+  if(currentAccessLevel==='supervisor'&&pinEntry===getSupervisorPin()){
+    settingsUnlocked=false;
+    document.getElementById('settingsLock').style.display='none';
+    document.getElementById('supervisorContent').style.display='block';
+    document.getElementById('settingsContent').style.display='none';
+    pinEntry='';updatePinDots();
+    if(cpcSettings.sheetsUrl) document.getElementById('supSheetsUrl').value=cpcSettings.sheetsUrl;
+    updateSupBanner();
+  } else if(currentAccessLevel==='mahesh'&&pinEntry===getMaheshPin()){
     settingsUnlocked=true;
     document.getElementById('settingsLock').style.display='none';
+    document.getElementById('supervisorContent').style.display='none';
     document.getElementById('settingsContent').style.display='block';
-    pinEntry='';
-    updatePinDots();
+    pinEntry='';updatePinDots();
     renderSettings();
   } else {
     document.getElementById('pinError').textContent='❌ Wrong PIN — try again';
-    setTimeout(()=>{
-      pinEntry='';
-      updatePinDots();
-      document.getElementById('pinError').textContent='';
-    },1200);
+    setTimeout(()=>{pinEntry='';updatePinDots();document.getElementById('pinError').textContent='';},1200);
   }
 }
 
 function lockSettings(){
-  settingsUnlocked=false;
-  pinEntry='';
-  updatePinDots();
+  settingsUnlocked=false;pinEntry='';updatePinDots();
   document.getElementById('settingsLock').style.display='block';
+  document.getElementById('supervisorContent').style.display='none';
   document.getElementById('settingsContent').style.display='none';
+  setAccessLevel('supervisor');
   showToast('🔒 Settings locked');
 }
 
-function changePin(){
-  const cur = document.getElementById('currentPin').value;
-  const nw  = document.getElementById('newPin').value;
-  if(cur!==getPin()){showToast('Current PIN is wrong','err');return;}
-  if(nw.length!==4||!/^\d{4}$/.test(nw)){showToast('New PIN must be exactly 4 digits','err');return;}
-  localStorage.setItem('atf_cpc_pin',nw);
-  document.getElementById('currentPin').value='';
-  document.getElementById('newPin').value='';
-  showToast('✅ PIN changed successfully','ok');
+function updateSupBanner(){
+  const b=document.getElementById('supConnBanner');if(!b)return;
+  if(cpcSettings.sheetsUrl){b.style.background='rgba(16,185,129,.08)';b.style.borderColor='rgba(16,185,129,.3)';b.style.color='#6ee7b7';b.textContent='✅ Connected — your shift logs go to Mahesh dashboard automatically.';}
+  else{b.style.background='var(--steel)';b.style.borderColor='var(--slate)';b.style.color='var(--fog)';b.textContent='⚡ Not connected — paste the URL from Mahesh to connect.';}
 }
 
-// Lock settings when switching away from settings tab
+async function testSupConnection(){
+  const url=document.getElementById('supSheetsUrl').value.trim();
+  if(!url){showToast('Paste the URL first','err');return;}
+  showToast('Testing...');
+  try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'CONNECTION_TEST'})});showToast('✅ Connected — save now','ok');}
+  catch(e){showToast('❌ Could not connect','err');}
+}
+
+function saveSupUrl(){
+  const url=document.getElementById('supSheetsUrl').value.trim();
+  if(!url){showToast('Paste the URL first','err');return;}
+  cpcSettings.sheetsUrl=url;
+  localStorage.setItem('atf_cpc_settings',JSON.stringify(cpcSettings));
+  updateSupBanner();updateCPCBanner();
+  showToast('✅ Connected successfully','ok');
+}
+
+function changePin(){
+  const cur=document.getElementById('currentPin').value;
+  const nw=document.getElementById('newPin').value;
+  if(cur!==getMaheshPin()){showToast('Current Mahesh PIN is wrong','err');return;}
+  if(nw.length!==4||!/^\d{4}$/.test(nw)){showToast('New PIN must be exactly 4 digits','err');return;}
+  if(nw===getSupervisorPin()){showToast('Mahesh PIN cannot match Supervisor PIN','err');return;}
+  localStorage.setItem('atf_cpc_pin',nw);
+  document.getElementById('currentPin').value='';document.getElementById('newPin').value='';
+  showToast('✅ Mahesh PIN changed','ok');
+}
+
+function changeSupPin(){
+  const cur=document.getElementById('currentSupPin')?.value;
+  const nw=document.getElementById('newSupPin')?.value;
+  if(!cur||!nw)return;
+  if(cur!==getSupervisorPin()){showToast('Current Supervisor PIN is wrong','err');return;}
+  if(nw.length!==4||!/^\d{4}$/.test(nw)){showToast('New PIN must be exactly 4 digits','err');return;}
+  if(nw===getMaheshPin()){showToast('Supervisor PIN cannot match Mahesh PIN','err');return;}
+  localStorage.setItem('atf_cpc_sup_pin',nw);
+  document.getElementById('currentSupPin').value='';document.getElementById('newSupPin').value='';
+  showToast('✅ Supervisor PIN changed','ok');
+}
+
 function switchTab(t){
   ['log','dashboard','toolchange','morning','settings'].forEach(p=>{
     document.getElementById('pane-'+p).classList.toggle('active',p===t);
     document.getElementById('tab-'+p).classList.toggle('active',p===t);
   });
-  // Auto-lock settings when leaving
-  if(t!=='settings' && settingsUnlocked) lockSettings();
+  if(t!=='settings'){lockSettings();}
   if(t==='dashboard')  renderDashboard();
   if(t==='toolchange') initToolChangeTab();
   if(t==='settings'){
-    if(!settingsUnlocked){
-      document.getElementById('settingsLock').style.display='block';
-      document.getElementById('settingsContent').style.display='none';
-    }
+    document.getElementById('settingsLock').style.display='block';
+    document.getElementById('supervisorContent').style.display='none';
+    document.getElementById('settingsContent').style.display='none';
   }
 }
+
 function renderSettings(){
   updateCPCBanner();
   renderSupervisorList();
@@ -2221,6 +2336,7 @@ function renderSettings(){
   if(cpcSettings.rejThreshold) document.getElementById('rejThreshold').value=cpcSettings.rejThreshold;
   if(cpcSettings.warnThreshold) document.getElementById('warnThreshold').value=cpcSettings.warnThreshold;
 }
+
 
 // ── GOOGLE SHEETS ──
 function saveCPCSheetUrl(){
