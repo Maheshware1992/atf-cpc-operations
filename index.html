@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>ATF CPC Operations</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink:#0d1117;--steel:#1c2936;--iron:#2d3f52;--slate:#3d5166;
+  --fog:#8fa3b8;--mist:#c8d6e2;--white:#fff;
+  --amber:#f59e0b;--amber-d:#d97706;--spark:#fb923c;
+  --green:#10b981;--green-bg:rgba(16,185,129,.1);--green-bd:rgba(16,185,129,.3);
+  --yellow:#f59e0b;--yellow-bg:rgba(245,158,11,.1);--yellow-bd:rgba(245,158,11,.3);
+  --red:#ef4444;--red-bg:rgba(239,68,68,.1);--red-bd:rgba(239,68,68,.3);
+  --blue:#3b82f6;--violet:#8b5cf6;
+  --r:8px;--r2:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',sans-serif;background:var(--ink);min-height:100vh;color:var(--white);font-size:14px}
+
+/* APP BAR */
+.app-bar{background:var(--steel);border-bottom:2px solid rgba(16,185,129,.3);padding:0 14px;height:54px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.wordmark{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:1px;color:var(--amber)}
+.divider{width:1px;height:20px;background:var(--iron)}
+.module-name{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:600;color:var(--mist);letter-spacing:.5px;flex:1}
+.site-badge{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+
+/* TABS */
+.tab-bar{display:flex;background:var(--steel);border-bottom:1px solid var(--iron)}
+.tab{flex:1;padding:10px 3px;background:none;border:none;color:var(--fog);font-family:'Inter',sans-serif;font-size:10px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:3px}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+
+/* PANES */
+.pane{display:none;padding:12px;max-width:700px;margin:0 auto}
+.pane.active{display:block}
+
+/* CARDS */
+.card{background:var(--steel);border:1px solid var(--iron);border-radius:var(--r2);margin-bottom:11px;overflow:hidden}
+.card-hdr{padding:9px 13px;background:var(--iron);display:flex;align-items:center;gap:8px}
+.ch-icon{font-size:15px;flex-shrink:0}
+.ch-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--mist);letter-spacing:.5px;flex:1}
+.ch-tag{font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px;background:rgba(245,158,11,.15);color:var(--amber)}
+.card-body{padding:13px}
+
+/* FIELDS */
+.frow{display:flex;gap:8px;margin-bottom:9px}
+.frow:last-child{margin-bottom:0}
+.fg{flex:1;display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px}
+.fg label .req{color:var(--spark)}
+.fg input,.fg select,.fg textarea{background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);width:100%;transition:border-color .2s;-webkit-appearance:none}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--amber)}
+.fg input[readonly]{background:rgba(255,255,255,.04);color:var(--fog)}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238fa3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+select option{background:var(--steel);color:var(--white)}
+
+/* SHIFT CHIPS */
+.shift-chips{display:flex;gap:7px}
+.sc{flex:1;padding:9px 6px;text-align:center;border:1.5px solid var(--slate);border-radius:var(--r);background:var(--iron);cursor:pointer;transition:all .18s}
+.sc .s-lbl{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--fog);letter-spacing:.5px}
+.sc .s-time{font-size:9px;color:var(--fog);margin-top:1px}
+.sc.a-shift.active{border-color:#f59e0b;background:rgba(245,158,11,.1)}
+.sc.a-shift.active .s-lbl{color:#f59e0b}
+.sc.b-shift.active{border-color:#8b5cf6;background:rgba(139,92,246,.1)}
+.sc.b-shift.active .s-lbl{color:#8b5cf6}
+.sc.c-shift.active{border-color:#3b82f6;background:rgba(59,130,246,.1)}
+.sc.c-shift.active .s-lbl{color:#93c5fd}
+
+/* MACHINE LOG ROWS */
+.machine-section{margin-bottom:14px}
+.machine-section-hdr{display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:var(--r);margin-bottom:7px;border-left:3px solid var(--amber)}
+.ms-component{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--amber);letter-spacing:.5px}
+.ms-count{font-size:10px;color:var(--fog);margin-left:auto}
+
+.machine-row{background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);margin-bottom:6px;overflow:hidden;transition:border-color .2s}
+.machine-row.has-data{border-color:rgba(16,185,129,.3)}
+.machine-row.has-rejection{border-color:rgba(239,68,68,.4)}
+.mr-header{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;user-select:none}
+.mr-no{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--white);letter-spacing:.5px;flex:1}
+.mr-type{font-size:9px;color:var(--fog)}
+.mr-summary{font-size:11px;font-weight:600;text-align:right}
+.mr-summary.ok{color:var(--green)}.mr-summary.warn{color:var(--red)}
+.mr-chev{color:var(--fog);font-size:11px;transition:transform .2s;flex-shrink:0}
+.mr-chev.open{transform:rotate(180deg)}
+.mr-body{display:none;padding:10px;border-top:1px solid var(--slate);background:rgba(0,0,0,.15)}
+.mr-body.open{display:block}
+.mr-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.mr-field{display:flex;flex-direction:column;gap:3px}
+.mr-field label{font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px}
+.mr-field input,.mr-field select{background:rgba(255,255,255,.06);border:1px solid var(--slate);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);width:100%;-webkit-appearance:none}
+.mr-field input:focus,.mr-field select:focus{outline:none;border-color:var(--amber)}
+.mr-field input::placeholder{color:var(--fog);opacity:.6}
+.rej-pct{font-size:11px;font-weight:700;margin-top:4px;padding:4px 8px;border-radius:6px;text-align:center}
+.rej-pct.good{background:var(--green-bg);color:var(--green)}
+.rej-pct.warn{background:var(--yellow-bg);color:var(--yellow)}
+.rej-pct.bad{background:var(--red-bg);color:var(--red)}
+
+/* TOOL CHANGE */
+.tool-change-row{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:10px;margin-bottom:7px;animation:slideIn .2s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.tc-header{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.tc-num{width:20px;height:20px;background:var(--violet);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.tc-lbl{font-size:12px;font-weight:600;color:#c4b5fd;flex:1}
+.tc-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px}
+.tc-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tc-field{display:flex;flex-direction:column;gap:3px}
+.tc-field label{font-size:9px;font-weight:600;color:rgba(196,181,253,.7);text-transform:uppercase;letter-spacing:.5px}
+.tc-field input,.tc-field select{background:rgba(255,255,255,.06);border:1px solid rgba(139,92,246,.25);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);width:100%;-webkit-appearance:none}
+.tc-field input:focus,.tc-field select:focus{outline:none;border-color:var(--violet)}
+.tc-field input::placeholder{color:rgba(196,181,253,.4);font-size:11px}
+
+.add-tc-btn{width:100%;padding:8px;background:none;border:1.5px dashed rgba(139,92,246,.4);border-radius:var(--r);color:#c4b5fd;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .2s;margin-top:4px}
+.add-tc-btn:hover{border-color:var(--violet);background:rgba(139,92,246,.05)}
+
+/* SUBMIT */
+.submit-btn{width:100%;padding:14px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:18px}
+.submit-btn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(16,185,129,.3)}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* SUCCESS */
+.success-screen{display:none;text-align:center;padding:40px 16px 30px;max-width:400px;margin:0 auto}
+.success-screen .s-icon{font-size:56px;margin-bottom:12px;animation:pop .4s ease}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.success-screen h2{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:var(--white);margin-bottom:8px}
+.success-screen p{font-size:12px;color:var(--fog);line-height:1.7;margin-bottom:16px}
+.notif-box-s{background:var(--steel);border:1px solid var(--iron);border-radius:var(--r2);overflow:hidden;margin-bottom:14px;text-align:left}
+.notif-hdr-s{background:rgba(139,92,246,.15);border-bottom:1px solid rgba(139,92,246,.3);padding:9px 13px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;color:#c4b5fd;letter-spacing:.5px}
+.notif-msg-s{padding:11px 13px;font-family:'Courier New',monospace;font-size:10px;color:#c4b5fd;line-height:1.8;white-space:pre-wrap;max-height:240px;overflow-y:auto}
+.teams-btn-s{width:100%;padding:12px;background:linear-gradient(135deg,#3730a3,#4f46e5);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:.5px;cursor:pointer;margin:0 13px 13px;width:calc(100% - 26px);display:flex;align-items:center;justify-content:center;gap:6px}
+.new-log-btn{background:var(--iron);border:1px solid var(--slate);color:var(--mist);border-radius:var(--r);padding:10px 22px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+
+/* DASHBOARD */
+.stats-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:13px}
+.stat-pill{background:var(--steel);border:1px solid var(--iron);border-radius:var(--r);padding:11px 12px;border-left:4px solid transparent}
+.sv{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;line-height:1}
+.sl{font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.sl2{font-size:10px;color:var(--fog);margin-top:1px}
+
+/* SITE TOGGLE */
+.site-toggle{display:flex;gap:6px;margin-bottom:13px}
+.site-btn{flex:1;padding:9px;border:1.5px solid var(--slate);border-radius:var(--r);background:none;color:var(--fog);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.site-btn.active{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+
+/* DATE NAV */
+.date-nav{display:flex;align-items:center;gap:8px;margin-bottom:13px}
+.date-nav-btn{background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);padding:7px 12px;cursor:pointer;font-size:13px;transition:all .2s}
+.date-nav-btn:hover{border-color:var(--amber);color:var(--amber)}
+.date-nav-label{flex:1;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--white);letter-spacing:.5px}
+.date-nav input[type=date]{background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);padding:7px 10px;font-family:'Inter',sans-serif;font-size:12px;width:100%}
+
+/* COMPONENT SUMMARY TABLE */
+.comp-table{width:100%;border-collapse:collapse;font-size:12px}
+.comp-table th{background:var(--iron);padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px}
+.comp-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.comp-table tr:hover td{background:rgba(255,255,255,.02)}
+.comp-table td:last-child,.comp-table th:last-child{text-align:right}
+.rej-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.rej-ok{background:var(--green-bg);color:var(--green)}
+.rej-warn{background:var(--yellow-bg);color:var(--yellow)}
+.rej-bad{background:var(--red-bg);color:var(--red)}
+
+/* MACHINE TABLE */
+.machine-table{width:100%;border-collapse:collapse;font-size:11px}
+.machine-table th{background:var(--iron);padding:7px 8px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.4px}
+.machine-table th:first-child{text-align:left}
+.machine-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center}
+.machine-table td:first-child{text-align:left;font-weight:600;color:var(--mist)}
+.machine-table tr.high-rej td{background:rgba(239,68,68,.06)}
+
+/* TOOL LOG TABLE */
+.tool-table{width:100%;border-collapse:collapse;font-size:11px}
+.tool-table th{background:var(--iron);padding:7px 8px;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.4px;text-align:left}
+.tool-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04)}
+.tool-table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* SHIFT SUMMARY ROWS */
+.shift-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.shift-row:last-child{border-bottom:none}
+.shift-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.shift-info{flex:1}
+.shift-name{font-size:12px;font-weight:600;color:var(--white)}
+.shift-meta{font-size:10px;color:var(--fog);margin-top:1px}
+.shift-prod{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--white);text-align:right}
+.shift-rej{font-size:10px;color:var(--fog);text-align:right}
+
+/* WA BOX */
+.wa-box{background:#075e54;border-radius:var(--r2);overflow:hidden;margin-bottom:11px}
+.wa-hdr{background:#128c7e;padding:9px 13px;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;gap:7px}
+.wa-body{padding:12px;font-family:'Courier New',monospace;font-size:10px;color:#d9fdd3;line-height:1.8;white-space:pre-wrap;max-height:360px;overflow-y:auto}
+.wa-footer{padding:9px 13px;background:#128c7e;display:flex;gap:8px}
+.wa-btn{flex:1;padding:9px;border:none;border-radius:var(--r);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.wa-copy{background:#25d366;color:#fff}
+.wa-teams{background:linear-gradient(135deg,#3730a3,#4f46e5);color:#fff}
+
+/* EMPTY */
+.empty{text-align:center;padding:36px 16px;color:var(--fog)}
+.empty-icon{font-size:40px;margin-bottom:9px;opacity:.5}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--iron);color:var(--white);border:1px solid var(--slate);padding:9px 15px;border-radius:25px;font-size:11px;font-weight:500;z-index:999;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{background:#064e3b;border-color:#059669;color:#d1fae5}
+.toast.err{background:#7f1d1d;border-color:#ef4444;color:#fee2e2}
+
+/* SECTION LABEL */
+.sec-lbl{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--fog);margin:14px 0 8px;display:flex;align-items:center;gap:7px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--iron)}
+
+@media(max-width:380px){.stats-strip{grid-template-columns:1fr 1fr}.mr-grid{grid-template-columns:1fr 1fr}.tc-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="app-bar">
+  <span class="wordmark">ATF</span>
+  <div class="divider"></div>
+  <span class="module-name">CPC OPERATIONS</span>
+  <span class="site-badge" id="headerSite">Select Site</span>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('log')"       id="tab-log">📝 Shift Log</button>
+  <button class="tab"        onclick="switchTab('dashboard')" id="tab-dashboard">📊 Dashboard</button>
+  <button class="tab"        onclick="switchTab('toolchange')" id="tab-toolchange">🔧 Tool Change</button>
+  <button class="tab"        onclick="switchTab('morning')"   id="tab-morning">☀️ Morning</button>
+  <button class="tab"        onclick="switchTab('settings')"  id="tab-settings">⚙️</button>
+</div>
+
+<!-- ════ SHIFT LOG FORM ════ -->
+<div id="pane-log" class="pane active">
+<div id="formView">
+
+  <!-- Log Identity -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">📋</span><span class="ch-title">LOG IDENTITY</span><span class="ch-tag">Required</span></div>
+    <div class="card-body">
+      <div class="frow">
+        <div class="fg">
+          <label>CPC Site <span class="req">*</span></label>
+          <select id="site" onchange="onSiteChange()">
+            <option value="">— Select Site —</option>
+            <option value="site1">Advik P15 — CPC Site 1 (A506/A897/A944/B128/B487)</option>
+            <option value="site2">Advik P44 — CPC Site 2 (B493)</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="logDate"/></div>
+        <div class="fg">
+          <label>Supervisor <span class="req">*</span></label>
+          <select id="supervisor">
+            <option value="">— Select —</option>
+            <option>Supervisor A</option>
+            <option>Supervisor B</option>
+            <option>Supervisor C</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Shift <span style="color:var(--spark)">*</span></div>
+        <div class="shift-chips">
+          <div class="sc a-shift" onclick="setShift('A')" id="shift-A">
+            <div class="s-lbl">A SHIFT</div>
+            <div class="s-time">07:00 – 15:00</div>
+          </div>
+          <div class="sc b-shift" onclick="setShift('B')" id="shift-B">
+            <div class="s-lbl">B SHIFT</div>
+            <div class="s-time">15:00 – 23:00</div>
+          </div>
+          <div class="sc c-shift" onclick="setShift('C')" id="shift-C">
+            <div class="s-lbl">C SHIFT</div>
+            <div class="s-time">23:00 – 07:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Machine Production Log -->
+  <div class="card" id="machineLogCard" style="display:none">
+    <div class="card-hdr"><span class="ch-icon">⚙️</span><span class="ch-title">MACHINE-WISE PRODUCTION</span><span class="ch-tag">Fill all running machines</span></div>
+    <div class="card-body" id="machineLogBody" style="padding:10px">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Tool Changes -->
+  <div class="card" id="toolChangeCard" style="display:none">
+    <div class="card-hdr"><span class="ch-icon">🔧</span><span class="ch-title">TOOL CHANGES THIS SHIFT</span><span class="ch-tag">Log every change</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.6">Log every tool change — machine number, tool name, life achieved, reason, new tool fitted.</div>
+      <div id="toolChangesContainer"></div>
+      <button class="add-tc-btn" onclick="addToolChange()">🔧 + Add Tool Change</button>
+    </div>
+  </div>
+
+  <!-- Shift notes -->
+  <div class="card" id="shiftNotesCard" style="display:none">
+    <div class="card-hdr"><span class="ch-icon">📝</span><span class="ch-title">SHIFT NOTES</span><span class="ch-tag">Optional</span></div>
+    <div class="card-body">
+      <div class="fg">
+        <label>Machine Downtime / Issues / Other Notes</label>
+        <textarea id="shiftNotes" placeholder="e.g. M/C 86 FRD down for 2 hrs — hydraulic leak. M/C 277 CNC coolant pressure issue 1 hr. Power cut 30 min 3am..." style="min-height:70px"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submitBtn" onclick="submitLog()" style="display:none">⚡ SUBMIT SHIFT LOG</button>
+
+</div><!-- /formView -->
+
+<!-- SUCCESS -->
+<div id="successView" class="success-screen">
+  <div class="s-icon">✅</div>
+  <h2>Shift Log Submitted</h2>
+  <p id="successMsg"></p>
+  <div class="notif-box-s">
+    <div class="notif-hdr-s">🏢 SEND TO MAHESH ON TEAMS</div>
+    <div class="notif-msg-s" id="notifMsgS"></div>
+    <button class="teams-btn-s" onclick="sendTeams()">🏢 COPY & OPEN TEAMS</button>
+  </div>
+  <button class="new-log-btn" onclick="newLog()">+ New Shift Log</button>
+</div>
+</div><!-- /pane-log -->
+
+<!-- ════ DASHBOARD ════ -->
+<div id="pane-dashboard" class="pane">
+
+  <!-- Site + Date selector -->
+  <div class="site-toggle">
+    <button class="site-btn active" onclick="setDashSite('site1',this)" id="dash-site1">Advik P15</button>
+    <button class="site-btn" onclick="setDashSite('site2',this)" id="dash-site2">Advik P44 (B493)</button>
+  </div>
+  <div class="date-nav">
+    <button class="date-nav-btn" onclick="changeDate(-1)">◀</button>
+    <div class="date-nav-label" id="dashDateLabel">Today</div>
+    <button class="date-nav-btn" onclick="changeDate(1)">▶</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="stats-strip" id="dashKPIs"><!-- JS --></div>
+
+  <!-- Shift breakdown -->
+  <div class="sec-lbl">📊 Shift Breakdown</div>
+  <div class="card"><div id="shiftBreakdown" style="padding:0"><!-- JS --></div></div>
+
+  <!-- Component summary -->
+  <div class="sec-lbl">🔩 Component-wise Summary</div>
+  <div class="card"><div style="overflow-x:auto"><table class="comp-table" id="compTable"><!-- JS --></table></div></div>
+
+  <!-- Machine-wise -->
+  <div class="sec-lbl">⚙️ Machine-wise Detail</div>
+  <div class="card"><div style="overflow-x:auto"><table class="machine-table" id="machineTable"><!-- JS --></table></div></div>
+
+</div><!-- /dashboard -->
+
+<!-- ════ MORNING SUMMARY ════ -->
+<div id="pane-morning" class="pane">
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">☀️</span><span class="ch-title">MORNING SUMMARY</span><span class="ch-tag">Send to Mahesh on Teams</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.6">Yesterday's complete production summary — auto-generated. Send on Teams to Mahesh every morning by 8 AM.</div>
+      <div class="frow">
+        <div class="fg"><label>Summary Date (yesterday)</label><input type="date" id="summaryDate"/></div>
+        <div class="fg" style="justify-content:flex-end"><button onclick="generateMorningSummary()" style="padding:9px 16px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:18px">🔄 Generate</button></div>
+      </div>
+    </div>
+  </div>
+  <div id="morningSummaryBox" style="display:none">
+    <div class="wa-box">
+      <div class="wa-hdr">📱 Copy & Send to Mahesh on Teams / WhatsApp</div>
+      <div class="wa-body" id="morningSummaryText"></div>
+      <div class="wa-footer">
+        <button class="wa-btn wa-copy" onclick="copyMorning()">📋 Copy</button>
+        <button class="wa-btn wa-teams" onclick="sendMorningTeams()">🏢 Open Teams</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /morning -->
+
+<!-- ════ DEDICATED TOOL CHANGE ENTRY ════ -->
+<div id="pane-toolchange" class="pane">
+
+  <!-- Quick entry form -->
+  <div class="card" style="border:2px solid rgba(139,92,246,.3)">
+    <div class="card-hdr" style="background:rgba(139,92,246,.15)">
+      <span class="ch-icon">🔧</span>
+      <span class="ch-title" style="color:#c4b5fd">QUICK TOOL CHANGE ENTRY</span>
+      <span class="ch-tag" style="background:rgba(139,92,246,.2);color:#c4b5fd">One change at a time</span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;line-height:1.6;padding:8px 10px;background:rgba(139,92,246,.06);border-radius:var(--r);border:1px solid rgba(139,92,246,.15)">
+        ⚡ Log each tool change in 30 seconds. Select site → machine → tool code → life → reason → Submit. Tap Submit and immediately log the next change.
+      </div>
+
+      <!-- Row 1: Site + Date + Shift -->
+      <div class="frow">
+        <div class="fg">
+          <label>Site <span class="req">*</span></label>
+          <select id="tc-site" onchange="onTCSiteChange()">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="tc-date"/>
+        </div>
+        <div class="fg">
+          <label>Shift <span class="req">*</span></label>
+          <select id="tc-shift">
+            <option value="">—</option>
+            <option value="A">A (07–15)</option>
+            <option value="B">B (15–23)</option>
+            <option value="C">C (23–07)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 2: Component + Machine -->
+      <div class="frow">
+        <div class="fg">
+          <label>Component <span class="req">*</span></label>
+          <select id="tc-component" onchange="onTCComponentChange()">
+            <option value="">— Select site first —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Machine No. <span class="req">*</span></label>
+          <select id="tc-machine">
+            <option value="">— Select component —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 3: Tool Code (from master) -->
+      <div class="frow">
+        <div class="fg">
+          <label>Tool Code / Name <span class="req">*</span></label>
+          <select id="tc-toolcode" onchange="onTCToolChange()">
+            <option value="">— Select component first —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tool details (auto-filled from master, editable) -->
+      <div id="tc-tooldetails" style="display:none">
+        <div class="frow">
+          <div class="fg">
+            <label>Operation</label>
+            <input id="tc-operation" readonly style="background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25);color:#c4b5fd"/>
+          </div>
+          <div class="fg">
+            <label>Make / Grade</label>
+            <input id="tc-make" readonly style="background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25);color:#c4b5fd"/>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg">
+            <label>Standard Life (pcs)</label>
+            <input id="tc-stdlife" readonly style="background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25);color:#c4b5fd"/>
+          </div>
+          <div class="fg">
+            <label>Life Achieved This Change (pcs) <span class="req">*</span></label>
+            <input type="number" id="tc-lifeachieved" placeholder="Actual pcs before change" min="0"/>
+          </div>
+        </div>
+        <!-- Life vs standard indicator -->
+        <div id="tc-lifeindicator" style="display:none;margin-bottom:9px;padding:7px 10px;border-radius:var(--r);font-size:11px;font-weight:600;text-align:center"></div>
+      </div>
+
+      <!-- Row 4: Change reason -->
+      <div class="frow">
+        <div class="fg">
+          <label>Change Reason <span class="req">*</span></label>
+          <select id="tc-reason">
+            <option value="">— Select reason —</option>
+            <option>Life completed</option>
+            <option>Breakage</option>
+            <option>Dimension out</option>
+            <option>Customer quality issue</option>
+            <option>Preventive change</option>
+            <option>Tool worn out</option>
+            <option>Coating peeled</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 5: New tool + supervisor -->
+      <div class="frow">
+        <div class="fg">
+          <label>New Tool Fitted (Code)</label>
+          <select id="tc-newtool">
+            <option value="">— Same tool code —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Supervisor <span class="req">*</span></label>
+          <select id="tc-supervisor">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="fg">
+          <label>Remarks</label>
+          <input id="tc-remarks" placeholder="Optional — any additional notes..."/>
+        </div>
+      </div>
+
+      <!-- Submit button -->
+      <button onclick="submitToolChange()" style="width:100%;padding:13px;background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:4px;transition:all .2s" id="tcSubmitBtn">
+        🔧 LOG TOOL CHANGE — ADD NEXT
+      </button>
+      <div style="font-size:10px;color:var(--fog);text-align:center;margin-top:6px">Submits and clears form for next entry. Site/Date/Shift/Supervisor remembered.</div>
+    </div>
+  </div>
+
+  <!-- Today's tool changes log -->
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--fog);margin:4px 0 8px;display:flex;align-items:center;gap:7px">
+    Today's Tool Changes
+    <span id="tcTodayCount" style="background:rgba(139,92,246,.15);color:#c4b5fd;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700">0</span>
+    <span style="flex:1;height:1px;background:var(--iron)"></span>
+    <button onclick="exportTCCSV()" style="background:none;border:1px solid var(--slate);border-radius:6px;color:var(--fog);cursor:pointer;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;padding:3px 9px">📥 Export</button>
+  </div>
+  <div id="tcTodayList">
+    <div class="empty"><div class="empty-icon">🔧</div><p>No tool changes logged today.<br/>Use the form above to log each change.</p></div>
+  </div>
+
+</div><!-- /pane-toolchange -->
+
+<!-- ════ SETTINGS ════ -->
+<div id="pane-settings" class="pane">
+
+  <!-- PIN LOCK SCREEN -->
+  <div id="settingsLock" style="text-align:center;padding:50px 20px 40px">
+    <div style="font-size:56px;margin-bottom:16px">🔒</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:var(--white);margin-bottom:6px">Settings — Restricted</div>
+    <div style="font-size:12px;color:var(--fog);margin-bottom:24px;line-height:1.7">Only Mahesh (ATF Admin) can access settings.<br/>Enter your 4-digit PIN to continue.</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px" id="pinDots">
+      <div id="pd1" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+      <div id="pd2" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+      <div id="pd3" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+      <div id="pd4" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+    </div>
+    <!-- PIN PAD -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:220px;margin:0 auto 16px">
+      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`
+        <button onclick="pinPress('${k}')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:${k===''?'transparent':'var(--white)'};font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:${k===''?'default':'pointer'};transition:all .15s;${k===''?'pointer-events:none':''}" ${k===''?'disabled':''}>
+          ${k}
+        </button>`).join('')}
+    </div>
+    <div id="pinError" style="font-size:11px;color:var(--red);height:16px;margin-bottom:8px"></div>
+    <div style="font-size:10px;color:var(--fog)">Default PIN: <strong style="color:var(--amber)">1234</strong> · Change in settings after unlocking</div>
+  </div>
+
+  <!-- SETTINGS CONTENT (hidden until PIN entered) -->
+  <div id="settingsContent" style="display:none">
+
+  <!-- Connection status -->
+  <div id="cpcConnBanner" style="border-radius:var(--r);padding:10px 13px;margin-bottom:12px;font-size:11px;line-height:1.6;border:1px solid var(--slate);background:var(--steel);color:var(--fog)">
+    ⚡ Not connected — shift logs save on this device only. Add Google Sheets URL below to auto-log all submissions for analysis.
+  </div>
+
+  <!-- Google Sheets -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">📊</span><span class="ch-title">GOOGLE SHEETS — AUTO LOGGING</span><span class="ch-tag">Recommended</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);line-height:1.7;margin-bottom:10px">
+        Every shift log submitted by any supervisor will auto-log to your Google Sheet. Open in Excel anytime for analysis — production trends, rejection patterns, tool life data.
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Apps Script URL</label>
+        <input id="cpcSheetsUrl" placeholder="https://script.google.com/macros/s/.../exec"/>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="testCPCConnection()" style="flex:1;padding:9px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🔌 Test</button>
+        <button onclick="saveCPCSheetUrl()" style="flex:1;padding:9px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Save URL</button>
+      </div>
+
+      <!-- Apps Script code -->
+      <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Google Apps Script Code</div>
+      <div style="font-size:10px;color:var(--fog);margin-bottom:7px;line-height:1.6">Go to <strong style="color:var(--mist)">script.google.com</strong> → New project → Paste → Deploy as Web App (Anyone) → Copy URL above</div>
+      <div id="cpcScriptBox" style="background:#0d1117;border:1px solid var(--slate);border-radius:var(--r);padding:10px;font-family:'Courier New',monospace;font-size:9px;color:#93c5fd;line-height:1.7;white-space:pre;max-height:200px;overflow:auto">function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var d  = JSON.parse(e.postData.contents);
+
+  // Sheet 1: Shift Summary
+  var sh = ss.getSheetByName("CPC_Shift_Log")
+    || ss.insertSheet("CPC_Shift_Log");
+  if (sh.getLastRow()===0) {
+    sh.appendRow(["Date","Site","Shift","Supervisor",
+      "Total Production","Total Rejection",
+      "Rejection %","Tool Changes","Shift Notes",
+      "Logged At"]);
+    sh.getRange(1,1,1,10).setFontWeight("bold")
+      .setBackground("#1c2936").setFontColor("#ffffff");
+    sh.setFrozenRows(1);
+  }
+  sh.appendRow([d.date, d.siteName, d.shift,
+    d.supervisor, d.totalProduction,
+    d.totalRejection, d.rejectionPct,
+    d.toolChanges ? d.toolChanges.length : 0,
+    d.shiftNotes||"",
+    new Date().toLocaleString("en-IN")]);
+
+  // Sheet 2: Machine Detail
+  var ms = ss.getSheetByName("CPC_Machine_Detail")
+    || ss.insertSheet("CPC_Machine_Detail");
+  if (ms.getLastRow()===0) {
+    ms.appendRow(["Date","Site","Shift","Supervisor",
+      "Machine","Component","Production",
+      "Rejection","Rejection %","Remarks"]);
+    ms.getRange(1,1,1,10).setFontWeight("bold")
+      .setBackground("#1c2936").setFontColor("#ffffff");
+    ms.setFrozenRows(1);
+  }
+  var md = d.machineData || {};
+  Object.keys(md).forEach(function(mc) {
+    var m = md[mc];
+    if (!m.production) return;
+    var pct = m.production>0
+      ? ((m.rejection||0)/m.production*100).toFixed(2) : 0;
+    ms.appendRow([d.date, d.siteName, d.shift,
+      d.supervisor, mc, m.component||"",
+      m.production, m.rejection||0, pct,
+      m.remarks||""]);
+  });
+
+  // Sheet 3: Tool Changes
+  var ts = ss.getSheetByName("CPC_Tool_Changes")
+    || ss.insertSheet("CPC_Tool_Changes");
+  if (ts.getLastRow()===0) {
+    ts.appendRow(["Date","Site","Shift","Supervisor",
+      "Machine","Tool Name","Operation",
+      "Life Achieved (pcs)","Change Reason",
+      "New Tool Fitted","Remarks"]);
+    ts.getRange(1,1,1,11).setFontWeight("bold")
+      .setBackground("#1c2936").setFontColor("#ffffff");
+    ts.setFrozenRows(1);
+  }
+  (d.toolChanges||[]).forEach(function(tc) {
+    ts.appendRow([d.date, d.siteName, d.shift,
+      d.supervisor, tc.machine, tc.toolName||"",
+      tc.operation||"", tc.lifeAchieved||"",
+      tc.changeReason||"", tc.newToolFitted||"",
+      tc.remarks||""]);
+  });
+
+  return ContentService
+    .createTextOutput(JSON.stringify({status:"ok"}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+      <button onclick="copyCPCScript()" style="width:100%;margin-top:7px;padding:8px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📋 Copy Script</button>
+      <div style="margin-top:10px;padding:9px 11px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--r);font-size:11px;color:#6ee7b7;line-height:1.6">
+        <strong style="color:var(--green);display:block;margin-bottom:2px">3 sheets auto-created in your Google Sheet:</strong>
+        📋 CPC_Shift_Log — one row per shift submitted<br/>
+        ⚙️ CPC_Machine_Detail — one row per machine per shift<br/>
+        🔧 CPC_Tool_Changes — one row per tool change
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPERVISOR MANAGEMENT -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">👷</span><span class="ch-title">SUPERVISOR LIST</span><span class="ch-tag">Manage anytime</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.5">Add or remove supervisors. These names appear in the shift log dropdown. Update whenever your team changes.</div>
+      <div id="supervisorList" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:7px">
+        <input id="newSupName" placeholder="Supervisor full name" style="flex:1;background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+        <button onclick="addSupervisor()" style="padding:8px 14px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOL CODE MASTER -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">🔧</span><span class="ch-title">TOOL CODE MASTER</span><span class="ch-tag">Mahesh manages</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;line-height:1.6">
+        Add tool codes component-wise. Supervisors select from these dropdowns — no free text. Add all tools for each component so the dropdown is complete.
+      </div>
+
+      <!-- Component selector -->
+      <div class="frow" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Select Component to manage tools</label>
+          <select id="toolMasterComp" onchange="renderToolMasterList()">
+            <option value="">— Select Component —</option>
+            <option>A506 Body</option>
+            <option>A506 Cover</option>
+            <option>A897 Body</option>
+            <option>A897 Shaft</option>
+            <option>A944</option>
+            <option>B128</option>
+            <option>B487</option>
+            <option>B493</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Current tool list for selected component -->
+      <div id="toolMasterList" style="margin-bottom:12px"></div>
+
+      <!-- Add new tool -->
+      <div style="background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:12px">
+        <div style="font-size:10px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">➕ Add New Tool Code</div>
+        <div class="frow">
+          <div class="fg">
+            <label>Tool Code <span style="color:var(--spark)">*</span></label>
+            <input id="tmCode" placeholder="e.g. T001 or KC5010-DNMG"/>
+          </div>
+          <div class="fg">
+            <label>Tool Name <span style="color:var(--spark)">*</span></label>
+            <input id="tmName" placeholder="e.g. DNMG 110408 Insert"/>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg">
+            <label>Operation</label>
+            <input id="tmOperation" placeholder="e.g. Turning OD, Face Milling, Drilling"/>
+          </div>
+          <div class="fg">
+            <label>Make / Grade</label>
+            <input id="tmMake" placeholder="e.g. Kennametal KC5010"/>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg">
+            <label>Standard Life (pcs)</label>
+            <input type="number" id="tmStdLife" placeholder="Expected tool life in pieces" min="0"/>
+          </div>
+          <div class="fg">
+            <label>Component</label>
+            <select id="tmComp">
+              <option value="">— Select —</option>
+              <option>A506 Body</option><option>A506 Cover</option>
+              <option>A897 Body</option><option>A897 Shaft</option>
+              <option>A944</option><option>B128</option>
+              <option>B487</option><option>B493</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="addToolCode()" style="width:100%;padding:10px;background:linear-gradient(135deg,#4c1d95,#7c3aed);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:.5px;cursor:pointer;margin-top:4px">🔧 ADD TOOL CODE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CPC SITE MANAGEMENT -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">🏭</span><span class="ch-title">CPC SITES & MACHINES</span><span class="ch-tag">Add new sites anytime</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;line-height:1.6">
+        Current sites and their components are shown below. To add a new site — fill the form at the bottom. To add machines to an existing component — use the + button next to that component.
+      </div>
+      <div id="siteManagementView"></div>
+
+      <!-- Add new site -->
+      <div style="margin-top:14px;padding:12px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:var(--r)">
+        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">➕ Add New CPC Site</div>
+        <div class="frow" style="margin-bottom:8px">
+          <div class="fg">
+            <label>Site ID (no spaces)</label>
+            <input id="newSiteId" placeholder="e.g. site3" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+          </div>
+          <div class="fg">
+            <label>Site Display Name</label>
+            <input id="newSiteName" placeholder="e.g. CPC Site 3 — Bajaj" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--fog);margin-bottom:6px">First component (you can add more after saving the site)</div>
+        <div class="frow" style="margin-bottom:8px">
+          <div class="fg">
+            <label>Component Name</label>
+            <input id="newSiteComp" placeholder="e.g. C229" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+          </div>
+          <div class="fg">
+            <label>Machine Numbers (comma separated)</label>
+            <input id="newSiteMachines" placeholder="e.g. 201 FRD, 202 FRD, 203 Brother" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+          </div>
+        </div>
+        <button onclick="addNewSite()" style="width:100%;padding:10px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:.5px;cursor:pointer">🏭 ADD NEW SITE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rejection threshold -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">⚠️</span><span class="ch-title">REJECTION ALERT THRESHOLD</span><span class="ch-tag">Customize</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.6">Machines above this rejection % will show RED alert. Currently set to 3%.</div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div class="fg">
+          <label>Red Alert Threshold (%)</label>
+          <input type="number" id="rejThreshold" value="3" min="0.5" max="20" step="0.5" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+        </div>
+        <div class="fg">
+          <label>Yellow Caution Threshold (%)</label>
+          <input type="number" id="warnThreshold" value="1" min="0.1" max="10" step="0.1" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+        </div>
+        <button onclick="saveThresholds()" style="padding:9px 14px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;margin-bottom:0">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data export & reset -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">📤</span><span class="ch-title">DATA EXPORT</span><span class="ch-tag">Backup</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px"><span id="cpcLogCount">0</span> shift logs stored on this device.</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="exportCPCCSV()" style="flex:1;padding:10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">📥 Export CSV</button>
+        <button onclick="clearCPCData()" style="flex:1;padding:10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r);color:var(--red);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🗑️ Clear Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change PIN -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">🔐</span><span class="ch-title">CHANGE SETTINGS PIN</span><span class="ch-tag">Mahesh only</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.6">Change the 4-digit PIN used to access Settings. Default is 1234 — change it immediately.</div>
+      <div class="frow">
+        <div class="fg">
+          <label>Current PIN</label>
+          <input type="password" id="currentPin" maxlength="4" placeholder="Current 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/>
+        </div>
+        <div class="fg">
+          <label>New PIN</label>
+          <input type="password" id="newPin" maxlength="4" placeholder="New 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/>
+        </div>
+      </div>
+      <button onclick="changePin()" style="width:100%;padding:10px;background:var(--amber);border:none;border-radius:var(--r);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px">🔐 Change PIN</button>
+      <button onclick="lockSettings()" style="width:100%;padding:9px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-top:7px">🔒 Lock Settings</button>
+    </div>
+  </div>
+
+  </div><!-- /settingsContent -->
+</div><!-- /pane-settings -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// MASTER DATA — from your Excel
+// ═══════════════════════════════════════════
+const SITE_DATA = {
+  site1: {
+    name: 'Advik P15 — CPC Site 1',
+    components: {
+      'A506 Body':  [{no:'126',type:'FRD'},{no:'127',type:'FRD'},{no:'232',type:'Brother'},{no:'98',type:'Brother'}],
+      'A506 Cover': [{no:'24',type:'AMS'},{no:'122',type:'Brother'}],
+      'A897 Body':  [{no:'192',type:'CNC'},{no:'223',type:'FRD'},{no:'9',type:'Brother'}],
+      'A897 Shaft': [{no:'277',type:'CNC'},{no:'278',type:'CNC'},{no:'279',type:'CNC'},{no:'297',type:'CNC'},{no:'299',type:'CNC'}],
+      'A944':       [{no:'233',type:'Brother'},{no:'272',type:'Brother'},{no:'273',type:'Brother'},{no:'99',type:'Brother'},{no:'25',type:'AMS'}],
+      'B128':       [{no:'168',type:'Brother'},{no:'187',type:'Brother'},{no:'195',type:'Brother'},{no:'224',type:'Brother'},{no:'230',type:'Brother'},{no:'231',type:'Brother'},{no:'233',type:'Brother*'},{no:'271',type:'Brother'},{no:'274',type:'Brother'},{no:'293',type:'Brother'},{no:'294',type:'Brother'},{no:'29',type:'FRD'}],
+      'B487':       [{no:'Mazak 114',type:'CNC'},{no:'Mazak 131',type:'CNC'},{no:'Mazak 188',type:'CNC'},{no:'Mazak 280',type:'CNC'},{no:'Mazak 281',type:'CNC'},{no:'Mazak 41',type:'CNC'}],
+    }
+  },
+  site2: {
+    name: 'Advik P44 — CPC Site 2',
+    components: {
+      'B493': [{no:'79',type:'FRD'},{no:'80',type:'FRD'},{no:'81',type:'FRD'},{no:'82',type:'FRD'},{no:'83',type:'FRD'},{no:'84',type:'FRD'},{no:'85',type:'FRD'},{no:'86',type:'FRD'},{no:'87',type:'FRD'},{no:'88',type:'FRD'},{no:'89',type:'FRD'},{no:'90',type:'FRD'},{no:'129',type:'FRD'},{no:'130',type:'FRD'}],
+    }
+  }
+};
+
+const REJECTION_REASONS = ['Dimension out','Surface finish','Burr','Porosity / Blow hole','Tool mark','Wrong operation','Fixture error','Operator error','Material defect','Other'];
+const TOOL_CHANGE_REASONS = ['Life completed','Breakage','Dimension out','Customer quality issue','Preventive change','Tool worn out','Coating peeled','Other'];
+const COMP_COLORS = {'A506 Body':'#f59e0b','A506 Cover':'#fb923c','A897 Body':'#3b82f6','A897 Shaft':'#8b5cf6','A944':'#10b981','B128':'#06b6d4','B487':'#ef4444','B493':'#a855f7'};
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let logs        = JSON.parse(localStorage.getItem('atf_cpc_logs') || '[]');
+let settings    = JSON.parse(localStorage.getItem('atf_settings') || '{}');
+let cpcSettings = JSON.parse(localStorage.getItem('atf_cpc_settings') || '{}');
+let currentSite = '';
+let currentShift= '';
+let toolChanges = [];
+let tcCount     = 0;
+let machineData = {};
+let dashSite    = 'site1';
+let toolSite    = 'site1';
+let dashDate    = new Date().toISOString().split('T')[0];
+
+// Dynamic site data — starts with built-in, user can extend
+function getSiteData(){
+  const saved = localStorage.getItem('atf_cpc_sites');
+  if(saved) return JSON.parse(saved);
+  return SITE_DATA; // default built-in
+}
+
+function saveSiteData(data){
+  localStorage.setItem('atf_cpc_sites',JSON.stringify(data));
+}
+
+function getSupervisors(){
+  const saved = localStorage.getItem('atf_cpc_supervisors');
+  if(saved) return JSON.parse(saved);
+  return ['Supervisor A','Supervisor B','Supervisor C']; // default
+}
+
+function getThresholds(){
+  return {
+    red:  parseFloat(cpcSettings.rejThreshold  || 3),
+    warn: parseFloat(cpcSettings.warnThreshold || 1),
+  };
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.onload = () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('logDate').value  = today;
+  document.getElementById('tc-date').value  = today;
+  document.getElementById('summaryDate').value = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  tcStickyData.date = today;
+  populateSiteDropdown();
+  populateSupervisorDropdown();
+  loadCPCSettings();
+  renderDashboard();
+};
+
+function populateSiteDropdown(){
+  const siteData = getSiteData();
+  const sel = document.getElementById('site');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select Site —</option>';
+  Object.entries(siteData).forEach(([id,site])=>{
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = site.name;
+    if(id===cur) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+function populateSupervisorDropdown(){
+  const sups = getSupervisors();
+  const sel  = document.getElementById('supervisor');
+  const cur  = sel.value;
+  sel.innerHTML = '<option value="">— Select —</option>';
+  sups.forEach(s=>{
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    if(s===cur) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+function loadCPCSettings(){
+  if(cpcSettings.sheetsUrl)    document.getElementById('cpcSheetsUrl').value    = cpcSettings.sheetsUrl;
+  if(cpcSettings.rejThreshold) document.getElementById('rejThreshold').value    = cpcSettings.rejThreshold;
+  if(cpcSettings.warnThreshold)document.getElementById('warnThreshold').value   = cpcSettings.warnThreshold;
+  updateCPCBanner();
+}
+
+// ═══════════════════════════════════════════
+// FORM — SITE CHANGE
+// ═══════════════════════════════════════════
+function onSiteChange(){
+  currentSite = document.getElementById('site').value;
+  const siteData = getSiteData();
+  document.getElementById('headerSite').textContent = currentSite ? (siteData[currentSite]?.name||currentSite) : 'Select Site';
+  machineData = {};
+  if(currentSite && currentShift) showMachineLog();
+  else hideMachineLog();
+}
+
+function setShift(shift){
+  currentShift = shift;
+  ['A','B','C'].forEach(s=>{
+    const el = document.getElementById('shift-'+s);
+    el.classList.remove('active');
+  });
+  document.getElementById('shift-'+shift).classList.add('active');
+  if(currentSite) showMachineLog();
+}
+
+function showMachineLog(){
+  document.getElementById('machineLogCard').style.display='block';
+  document.getElementById('toolChangeCard').style.display='block';
+  document.getElementById('shiftNotesCard').style.display='block';
+  document.getElementById('submitBtn').style.display='flex';
+  renderMachineLog();
+}
+
+function hideMachineLog(){
+  document.getElementById('machineLogCard').style.display='none';
+  document.getElementById('toolChangeCard').style.display='none';
+  document.getElementById('shiftNotesCard').style.display='none';
+  document.getElementById('submitBtn').style.display='none';
+}
+
+// ═══════════════════════════════════════════
+// RENDER MACHINE LOG
+// ═══════════════════════════════════════════
+function renderMachineLog(){
+  const allSites = getSiteData();
+  const siteData = allSites[currentSite];
+  if(!siteData) return;
+  const body = document.getElementById('machineLogBody');
+  body.innerHTML = '';
+
+  Object.entries(siteData.components).forEach(([comp, machines])=>{
+    const color = COMP_COLORS[comp] || '#64748b';
+    const section = document.createElement('div');
+    section.className = 'machine-section';
+    section.innerHTML = `
+      <div class="machine-section-hdr" style="border-left-color:${color}">
+        <span class="ms-component" style="color:${color}">${comp}</span>
+        <span class="ms-count">${machines.length} machine${machines.length>1?'s':''}</span>
+      </div>`;
+
+    machines.forEach(mc=>{
+      const key = mc.no;
+      const data = machineData[key] || {};
+      const prod = data.production || 0;
+      const rej  = data.rejection  || 0;
+      const pct  = prod > 0 ? ((rej/prod)*100).toFixed(1) : 0;
+      const pctClass = pct >= 3 ? 'bad' : pct >= 1 ? 'warn' : 'good';
+      const hasData = prod > 0;
+      const hasRej  = rej > 0;
+
+      const card = document.createElement('div');
+      card.className = `machine-row${hasData?' has-data':''}${hasRej?' has-rejection':''}`;
+      card.id = `mrow-${key.replace(/\s/g,'_')}`;
+      card.innerHTML = `
+        <div class="mr-header" onclick="toggleMachine('${key}')">
+          <span class="mr-no">M/C ${key} <span class="mr-type">${mc.type}</span></span>
+          ${hasData ? `<span class="mr-summary ${hasRej?'warn':'ok'}">${prod} pcs${hasRej?' · '+rej+' rej':''}</span>` : '<span class="mr-summary" style="color:var(--fog)">Not filled</span>'}
+          <span class="mr-chev" id="chev-${key.replace(/\s/g,'_')}">▼</span>
+        </div>
+        <div class="mr-body" id="body-${key.replace(/\s/g,'_')}">
+          <div class="mr-grid">
+            <div class="mr-field">
+              <label>Production (pcs)</label>
+              <input type="number" min="0" value="${prod||''}" placeholder="0"
+                oninput="updateMachine('${key}','production',this.value)"/>
+            </div>
+            <div class="mr-field">
+              <label>Rejection (pcs)</label>
+              <input type="number" min="0" value="${rej||''}" placeholder="0"
+                oninput="updateMachine('${key}','rejection',this.value)"/>
+            </div>
+          </div>
+          ${rej > 0 ? `
+          <div class="mr-field" style="margin-bottom:7px">
+            <label>Rejection Reason</label>
+            <select onchange="updateMachine('${key}','rejReason',this.value)">
+              <option value="">— Select reason —</option>
+              ${REJECTION_REASONS.map(r=>`<option value="${r}"${data.rejReason===r?' selected':''}>${r}</option>`).join('')}
+            </select>
+          </div>` : ''}
+          ${prod > 0 ? `<div class="rej-pct ${pctClass}">Rejection Rate: ${pct}%${pct>=3?' ⚠️ HIGH':pct>=1?' ⚠️':' ✅'}</div>` : ''}
+          <div class="mr-field" style="margin-top:7px">
+            <label>Machine Remarks</label>
+            <input type="text" value="${data.remarks||''}" placeholder="e.g. Running smooth / coolant issue / downtime 1 hr..."
+              oninput="updateMachine('${key}','remarks',this.value)"/>
+          </div>
+        </div>`;
+      section.appendChild(card);
+    });
+
+    body.appendChild(section);
+  });
+}
+
+function toggleMachine(key){
+  const k = key.replace(/\s/g,'_');
+  const body = document.getElementById('body-'+k);
+  const chev = document.getElementById('chev-'+k);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  if(chev) chev.classList.toggle('open',!isOpen);
+}
+
+function updateMachine(key, field, value){
+  if(!machineData[key]) machineData[key]={};
+  machineData[key][field] = field==='production'||field==='rejection' ? (parseFloat(value)||0) : value;
+  // Find component for this machine
+  const allSites = getSiteData();
+  const siteData = allSites[currentSite];
+  if(siteData){
+    Object.entries(siteData.components).forEach(([comp,machines])=>{
+      if(machines.some(m=>m.no===key)) machineData[key].component=comp;
+    });
+  }
+  const thresh = getThresholds();
+  // Update card styling
+  const card = document.getElementById('mrow-'+key.replace(/\s/g,'_'));
+  if(card){
+    const d = machineData[key];
+    card.classList.toggle('has-data',d.production>0);
+    card.classList.toggle('has-rejection',d.rejection>0);
+    // Update summary text
+    const sumEl = card.querySelector('.mr-summary');
+    if(sumEl){
+      if(d.production>0){
+        sumEl.textContent = `${d.production} pcs${d.rejection>0?' · '+d.rejection+' rej':''}`;
+        sumEl.className = `mr-summary ${d.rejection>0?'warn':'ok'}`;
+      } else {
+        sumEl.textContent='Not filled';sumEl.className='mr-summary';sumEl.style.color='var(--fog)';
+      }
+    }
+    // Update rejection rate display
+    const pctEl = card.querySelector('.rej-pct');
+    if(pctEl && d.production>0){
+      const pct = ((d.rejection||0)/d.production*100).toFixed(1);
+      const cls = pct>=3?'bad':pct>=1?'warn':'good';
+      pctEl.textContent = `Rejection Rate: ${pct}%${pct>=3?' ⚠️ HIGH':pct>=1?' ⚠️':' ✅'}`;
+      pctEl.className = 'rej-pct '+cls;
+    }
+    // Show rejection reason if rejection > 0
+    if(field==='rejection'){
+      const bodyEl = document.getElementById('body-'+key.replace(/\s/g,'_'));
+      if(bodyEl) renderMachineLog(); // re-render to show/hide rejection reason
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// TOOL CHANGES
+// ═══════════════════════════════════════════
+function addToolChange(){
+  tcCount++;
+  const id = 'tc'+tcCount;
+  toolChanges.push({id, machine:'', toolName:'', operation:'', lifeAchieved:'', changeReason:'', newToolFitted:'', remarks:''});
+  renderToolChanges();
+}
+
+function removeTC(id){ toolChanges=toolChanges.filter(t=>t.id!==id); renderToolChanges(); }
+function updateTC(id,field,val){ const t=toolChanges.find(x=>x.id===id); if(t) t[field]=val; }
+
+function renderToolChanges(){
+  const c = document.getElementById('toolChangesContainer');
+  const allSites = getSiteData();
+  const siteData = allSites[currentSite];
+  const allMachines = siteData ? Object.values(siteData.components).flat().map(m=>m.no) : [];
+
+  c.innerHTML = toolChanges.map((tc,i)=>`
+    <div class="tool-change-row">
+      <div class="tc-header">
+        <div class="tc-num">${i+1}</div>
+        <span class="tc-lbl">Tool Change ${i+1}</span>
+        <button class="tc-del" onclick="removeTC('${tc.id}')">×</button>
+      </div>
+      <div class="tc-grid">
+        <div class="tc-field">
+          <label>Machine No. *</label>
+          <select onchange="updateTC('${tc.id}','machine',this.value)">
+            <option value="">— Select —</option>
+            ${allMachines.map(m=>`<option value="${m}"${tc.machine===m?' selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div class="tc-field">
+          <label>Tool Name / ID *</label>
+          <input type="text" value="${tc.toolName}" placeholder="e.g. DNMG 110408 KC5010" oninput="updateTC('${tc.id}','toolName',this.value)"/>
+        </div>
+        <div class="tc-field">
+          <label>Operation</label>
+          <input type="text" value="${tc.operation}" placeholder="e.g. Turning OD, Drilling" oninput="updateTC('${tc.id}','operation',this.value)"/>
+        </div>
+        <div class="tc-field">
+          <label>Life Achieved (pcs)</label>
+          <input type="number" value="${tc.lifeAchieved}" placeholder="0" oninput="updateTC('${tc.id}','lifeAchieved',this.value)"/>
+        </div>
+        <div class="tc-field">
+          <label>Change Reason *</label>
+          <select onchange="updateTC('${tc.id}','changeReason',this.value)">
+            <option value="">— Select —</option>
+            ${TOOL_CHANGE_REASONS.map(r=>`<option value="${r}"${tc.changeReason===r?' selected':''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div class="tc-field">
+          <label>New Tool Fitted</label>
+          <input type="text" value="${tc.newToolFitted}" placeholder="e.g. DNMG 110408 KC5525" oninput="updateTC('${tc.id}','newToolFitted',this.value)"/>
+        </div>
+      </div>
+      <div class="tc-field" style="margin-top:7px">
+        <label>Remarks</label>
+        <input type="text" value="${tc.remarks}" placeholder="Additional notes..." oninput="updateTC('${tc.id}','remarks',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(139,92,246,.25);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);width:100%"/>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// SUBMIT
+// ═══════════════════════════════════════════
+async function submitLog(){
+  const site = document.getElementById('site').value;
+  const date = document.getElementById('logDate').value;
+  const sup  = document.getElementById('supervisor').value;
+  if(!site)  {showToast('Select CPC site','err');return;}
+  if(!date)  {showToast('Select date','err');return;}
+  if(!sup)   {showToast('Select supervisor','err');return;}
+  if(!currentShift){showToast('Select shift','err');return;}
+
+  const filledMachines = Object.entries(machineData).filter(([k,v])=>v.production>0);
+  if(!filledMachines.length){showToast('Enter production for at least one machine','err');return;}
+
+  document.getElementById('submitBtn').disabled=true;
+  document.getElementById('submitBtn').textContent='Saving...';
+
+  const totalProd = filledMachines.reduce((s,[k,v])=>s+(v.production||0),0);
+  const totalRej  = filledMachines.reduce((s,[k,v])=>s+(v.rejection||0),0);
+  const rejPct    = totalProd>0?((totalRej/totalProd)*100).toFixed(2):0;
+
+  // Build per-component summary
+  const compSummary = {};
+  filledMachines.forEach(([k,v])=>{
+    const comp = v.component || 'Unknown';
+    if(!compSummary[comp]) compSummary[comp]={production:0,rejection:0};
+    compSummary[comp].production += v.production||0;
+    compSummary[comp].rejection  += v.rejection||0;
+  });
+
+  const highRejMachines = filledMachines.filter(([k,v])=>v.production>0&&((v.rejection/v.production)*100)>=3);
+
+  const allSites = getSiteData();
+  const log = {
+    id:'log'+Date.now(),
+    site, siteName:allSites[site]?.name||site,
+    date, shift:currentShift, supervisor:sup,
+    machineData:{...machineData},
+    toolChanges:[...toolChanges],
+    shiftNotes:document.getElementById('shiftNotes').value,
+    totalProduction:totalProd,
+    totalRejection:totalRej,
+    rejectionPct:parseFloat(rejPct),
+    compSummary,
+    loggedAt:new Date().toISOString(),
+  };
+
+  logs.unshift(log);
+  localStorage.setItem('atf_cpc_logs',JSON.stringify(logs));
+
+  // Push to Google Sheets if connected
+  if(cpcSettings.sheetsUrl){
+    try{
+      fetch(cpcSettings.sheetsUrl,{
+        method:'POST',mode:'no-cors',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...log,type:'CPC_SHIFT_LOG'})
+      });
+    }catch(e){}
+  }
+
+  // Generate Teams message
+  const shiftColors={A:'🟡',B:'🟣',C:'🔵'};
+  const dateLabel=new Date(date).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  let msg=`${shiftColors[currentShift]} CPC SHIFT LOG — ${currentShift} SHIFT\n`;
+  msg+=`📅 ${dateLabel} | 👤 ${sup}\n`;
+  msg+=`🏭 ${SITE_DATA[site].name}\n`;
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg+=`📊 PRODUCTION SUMMARY\n`;
+  msg+=`Total Production : ${totalProd} pcs\n`;
+  msg+=`Total Rejection  : ${totalRej} pcs (${rejPct}%)\n`;
+  msg+=`Machines Logged  : ${filledMachines.length}\n`;
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg+=`🔩 COMPONENT-WISE\n`;
+  Object.entries(compSummary).forEach(([comp,data])=>{
+    const pct=data.production>0?((data.rejection/data.production)*100).toFixed(1):0;
+    msg+=`${comp}: ${data.production} pcs | Rej: ${data.rejection} (${pct}%)\n`;
+  });
+  if(highRejMachines.length>0){
+    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg+=`⚠️ HIGH REJECTION MACHINES (≥3%)\n`;
+    highRejMachines.forEach(([k,v])=>{
+      const pct=((v.rejection/v.production)*100).toFixed(1);
+      msg+=`M/C ${k} (${v.component}): ${v.rejection}/${v.production} pcs = ${pct}%`;
+      if(v.rejReason) msg+=` | Reason: ${v.rejReason}`;
+      msg+='\n';
+    });
+  }
+  if(toolChanges.length>0){
+    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg+=`🔧 TOOL CHANGES (${toolChanges.length})\n`;
+    toolChanges.forEach((tc,i)=>{
+      msg+=`${i+1}. M/C ${tc.machine} | ${tc.toolName} | Life: ${tc.lifeAchieved||'—'} pcs | ${tc.changeReason}\n`;
+    });
+  }
+  if(log.shiftNotes){
+    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg+=`📝 NOTES\n${log.shiftNotes}\n`;
+  }
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg+=`Logged at: ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}`;
+
+  document.getElementById('successMsg').textContent=`${SITE_DATA[site].name} · ${currentShift} Shift · ${dateLabel} · ${totalProd} pcs produced · ${totalRej} rejected`;
+  document.getElementById('notifMsgS').textContent=msg;
+  window._currentShiftMsg=msg;
+  document.getElementById('formView').style.display='none';
+  document.getElementById('successView').style.display='block';
+  renderDashboard();
+}
+
+function sendTeams(){
+  const msg=window._currentShiftMsg||'';
+  navigator.clipboard.writeText(msg).then(()=>{
+    showToast('📋 Copied — opening Teams...','ok');
+    setTimeout(()=>window.open(`https://teams.microsoft.com/l/chat/0/0?message=${encodeURIComponent(msg)}`,'_blank'),600);
+  }).catch(()=>window.open(`https://teams.microsoft.com/l/chat/0/0?message=${encodeURIComponent(msg)}`,'_blank'));
+}
+
+function newLog(){
+  machineData={};toolChanges=[];tcCount=0;currentShift='';
+  ['A','B','C'].forEach(s=>document.getElementById('shift-'+s).classList.remove('active'));
+  document.getElementById('site').value='';document.getElementById('supervisor').value='';
+  document.getElementById('shiftNotes').value='';
+  document.getElementById('submitBtn').disabled=false;document.getElementById('submitBtn').textContent='⚡ SUBMIT SHIFT LOG';
+  document.getElementById('formView').style.display='block';document.getElementById('successView').style.display='none';
+  hideMachineLog();window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function setDashSite(site,btn){
+  dashSite=site;
+  document.querySelectorAll('.site-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDashboard();
+}
+
+function changeDate(delta){
+  const d=new Date(dashDate);d.setDate(d.getDate()+delta);
+  dashDate=d.toISOString().split('T')[0];
+  renderDashboard();
+}
+
+function renderDashboard(){
+  const dayLogs=logs.filter(l=>l.date===dashDate&&l.site===dashSite);
+  const dateLabel=new Date(dashDate).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('dashDateLabel').textContent=dashDate===new Date().toISOString().split('T')[0]?'Today — '+dateLabel:dateLabel;
+
+  const totalProd=dayLogs.reduce((s,l)=>s+l.totalProduction,0);
+  const totalRej =dayLogs.reduce((s,l)=>s+l.totalRejection,0);
+  const rejPct   =totalProd>0?((totalRej/totalProd)*100).toFixed(1):0;
+  const totalTC  =dayLogs.reduce((s,l)=>s+l.toolChanges.length,0);
+  const shifts   =dayLogs.map(l=>l.shift);
+
+  // KPIs
+  document.getElementById('dashKPIs').innerHTML=`
+    <div class="stat-pill" style="border-left-color:var(--green)"><div class="sv" style="color:var(--green)">${totalProd}</div><div class="sl">Total Production</div><div class="sl2">${shifts.length} shift(s) logged</div></div>
+    <div class="stat-pill" style="border-left-color:${rejPct>=3?'var(--red)':rejPct>=1?'var(--yellow)':'var(--green)'}"><div class="sv" style="color:${rejPct>=3?'var(--red)':rejPct>=1?'var(--yellow)':'var(--green)'}">${totalRej}</div><div class="sl">Total Rejection</div><div class="sl2">${rejPct}% rejection rate</div></div>
+    <div class="stat-pill" style="border-left-color:var(--violet)"><div class="sv" style="color:var(--violet)">${totalTC}</div><div class="sl">Tool Changes</div><div class="sl2">Across all shifts</div></div>
+    <div class="stat-pill" style="border-left-color:var(--blue)"><div class="sv" style="color:var(--blue)">${shifts.length}/3</div><div class="sl">Shifts Logged</div><div class="sl2">${['A','B','C'].filter(s=>shifts.includes(s)).join(', ')||'None yet'}</div></div>`;
+
+  // Shift breakdown
+  const shiftColors={A:'#f59e0b',B:'#8b5cf6',C:'#3b82f6'};
+  const sb=document.getElementById('shiftBreakdown');
+  if(!dayLogs.length){sb.innerHTML='<div class="empty"><div class="empty-icon">📊</div><p>No shift logs for this date.</p></div>';return;}
+  sb.innerHTML=dayLogs.sort((a,b)=>['A','B','C'].indexOf(a.shift)-['A','B','C'].indexOf(b.shift)).map(l=>{
+    const pct=l.totalProduction>0?((l.totalRejection/l.totalProduction)*100).toFixed(1):0;
+    return`<div class="shift-row">
+      <div class="shift-dot" style="background:${shiftColors[l.shift]}"></div>
+      <div class="shift-info"><div class="shift-name">${l.shift} Shift · ${l.supervisor}</div><div class="shift-meta">Rej: ${l.totalRejection} pcs (${pct}%) · ${l.toolChanges.length} tool change(s)</div></div>
+      <div><div class="shift-prod">${l.totalProduction}</div><div class="shift-rej">pcs</div></div>
+    </div>`;}).join('');
+
+  // Component summary
+  const compTotals={};
+  dayLogs.forEach(l=>{Object.entries(l.compSummary||{}).forEach(([comp,data])=>{
+    if(!compTotals[comp])compTotals[comp]={production:0,rejection:0};
+    compTotals[comp].production+=data.production;compTotals[comp].rejection+=data.rejection;
+  });});
+  const ct=document.getElementById('compTable');
+  ct.innerHTML=`<thead><tr><th>Component</th><th>Production</th><th>Rejection</th><th>Rej %</th></tr></thead><tbody>`+
+    (Object.entries(compTotals).length?Object.entries(compTotals).map(([comp,data])=>{
+      const pct=data.production>0?((data.rejection/data.production)*100).toFixed(1):0;
+      const cls=pct>=3?'rej-bad':pct>=1?'rej-warn':'rej-ok';
+      const color=COMP_COLORS[comp]||'#64748b';
+      return`<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px"></span>${comp}</td><td style="text-align:center;font-weight:600">${data.production}</td><td style="text-align:center">${data.rejection}</td><td style="text-align:center"><span class="rej-badge ${cls}">${pct}%</span></td></tr>`;
+    }).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--fog);padding:14px">No data</td></tr>')+
+    '</tbody>';
+
+  // Machine table
+  const machineTotals={};
+  dayLogs.forEach(l=>{Object.entries(l.machineData||{}).forEach(([mc,data])=>{
+    if(!data.production) return;
+    if(!machineTotals[mc])machineTotals[mc]={production:0,rejection:0,component:data.component||'—',shifts:[]};
+    machineTotals[mc].production+=data.production;machineTotals[mc].rejection+=data.rejection||0;
+    machineTotals[mc].shifts.push(l.shift);
+  });});
+  const mt=document.getElementById('machineTable');
+  mt.innerHTML=`<thead><tr><th>Machine</th><th>Component</th><th>Production</th><th>Rejection</th><th>Rej %</th></tr></thead><tbody>`+
+    (Object.entries(machineTotals).length?Object.entries(machineTotals).sort((a,b)=>{
+      const pa=a[1].production>0?(a[1].rejection/a[1].production):0;
+      const pb=b[1].production>0?(b[1].rejection/b[1].production):0;
+      return pb-pa;
+    }).map(([mc,data])=>{
+      const pct=data.production>0?((data.rejection/data.production)*100).toFixed(1):0;
+      const cls=pct>=3?'rej-bad':pct>=1?'rej-warn':'rej-ok';
+      const highRej=pct>=3;
+      return`<tr${highRej?' class="high-rej"':''}><td>M/C ${mc}</td><td>${data.component}</td><td>${data.production}</td><td>${data.rejection}</td><td><span class="rej-badge ${cls}">${pct}%${highRej?' ⚠️':''}</span></td></tr>`;
+    }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--fog);padding:14px">No machine data</td></tr>')+
+    '</tbody>';
+}
+
+// ═══════════════════════════════════════════
+// MORNING SUMMARY
+// ═══════════════════════════════════════════
+function generateMorningSummary(){
+  const date=document.getElementById('summaryDate').value;
+  const dateLabel=new Date(date).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const allSiteLogs={site1:logs.filter(l=>l.date===date&&l.site==='site1'),site2:logs.filter(l=>l.date===date&&l.site==='site2')};
+
+  let msg=`☀️ ATF CPC MORNING SUMMARY\n📅 ${dateLabel}\n━━━━━━━━━━━━━━━━━━━━━━━\n`;
+
+  ['site1','site2'].forEach(site=>{
+    const siteLogs=allSiteLogs[site];
+    const siteName=SITE_DATA[site].name;
+    const totalProd=siteLogs.reduce((s,l)=>s+l.totalProduction,0);
+    const totalRej =siteLogs.reduce((s,l)=>s+l.totalRejection,0);
+    const rejPct   =totalProd>0?((totalRej/totalProd)*100).toFixed(1):0;
+    const shifts   =siteLogs.map(l=>l.shift);
+    const totalTC  =siteLogs.reduce((s,l)=>s+l.toolChanges.length,0);
+
+    msg+=`🏭 ${siteName}\n`;
+    if(!siteLogs.length){msg+=`No data logged for this date.\n\n`;return;}
+    msg+=`Shifts Logged : ${shifts.join(', ')||'None'}\n`;
+    msg+=`Total Prod    : ${totalProd} pcs\n`;
+    msg+=`Total Rej     : ${totalRej} pcs (${rejPct}%)\n`;
+    msg+=`Tool Changes  : ${totalTC}\n`;
+
+    // Component wise
+    const compTotals={};
+    siteLogs.forEach(l=>{Object.entries(l.compSummary||{}).forEach(([comp,data])=>{
+      if(!compTotals[comp])compTotals[comp]={production:0,rejection:0};
+      compTotals[comp].production+=data.production;compTotals[comp].rejection+=data.rejection;
+    });});
+    if(Object.keys(compTotals).length){
+      msg+=`\nComponent-wise:\n`;
+      Object.entries(compTotals).forEach(([comp,data])=>{
+        const pct=data.production>0?((data.rejection/data.production)*100).toFixed(1):0;
+        const flag=pct>=3?'⚠️ ':pct>=1?'⚡ ':'✅ ';
+        msg+=`${flag}${comp}: ${data.production} pcs | Rej: ${data.rejection} (${pct}%)\n`;
+      });
+    }
+
+    // High rejection alert
+    const allMachineData={};
+    siteLogs.forEach(l=>Object.entries(l.machineData||{}).forEach(([mc,data])=>{
+      if(!allMachineData[mc])allMachineData[mc]={production:0,rejection:0,component:data.component};
+      allMachineData[mc].production+=data.production||0;allMachineData[mc].rejection+=data.rejection||0;
+    }));
+    const highRej=Object.entries(allMachineData).filter(([k,v])=>v.production>0&&(v.rejection/v.production)>=0.03);
+    if(highRej.length){
+      msg+=`\n⚠️ HIGH REJECTION (≥3%):\n`;
+      highRej.forEach(([mc,v])=>{
+        const pct=((v.rejection/v.production)*100).toFixed(1);
+        msg+=`M/C ${mc} (${v.component||'—'}): ${pct}% — ${v.rejection}/${v.production} pcs\n`;
+      });
+    }
+
+    // Tool changes
+    const allTC=siteLogs.flatMap(l=>l.toolChanges);
+    if(allTC.length){
+      msg+=`\n🔧 TOOL CHANGES (${allTC.length}):\n`;
+      allTC.forEach((tc,i)=>{msg+=`${i+1}. M/C ${tc.machine} | ${tc.toolName} | Life: ${tc.lifeAchieved||'—'} pcs | ${tc.changeReason}\n`;});
+    }
+    msg+=`\n`;
+  });
+
+  // Missing shifts alert
+  const allSites2 = getSiteData();
+  const missingShifts=[];
+  Object.entries(allSites2).forEach(([site,siteObj])=>{
+    ['A','B','C'].forEach(shift=>{
+      if(!logs.find(l=>l.date===date&&l.site===site&&l.shift===shift)){
+        missingShifts.push(`${siteObj.name} — ${shift} Shift`);
+      }
+    });
+  });
+  if(missingShifts.length){
+    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n❌ MISSING SHIFT LOGS:\n`;
+    missingShifts.forEach(m=>msg+=`• ${m}\n`);
+  }
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\nGenerated: ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}`;
+
+  document.getElementById('morningSummaryText').textContent=msg;
+  document.getElementById('morningSummaryBox').style.display='block';
+  window._morningMsg=msg;
+}
+
+function copyMorning(){navigator.clipboard.writeText(window._morningMsg||'').then(()=>showToast('📋 Copied','ok'));}
+function sendMorningTeams(){
+  const msg=window._morningMsg||'';
+  navigator.clipboard.writeText(msg).then(()=>{
+    showToast('📋 Copied — opening Teams...','ok');
+    setTimeout(()=>window.open(`https://teams.microsoft.com/l/chat/0/0?message=${encodeURIComponent(msg)}`,'_blank'),600);
+  });
+}
+
+// ═══════════════════════════════════════════
+// TOOL CODE MASTER
+// ═══════════════════════════════════════════
+function getToolCodes(){
+  return JSON.parse(localStorage.getItem('atf_tool_codes') || '{}');
+  // Structure: { 'A506 Body': [{code,name,operation,make,stdLife},...], ... }
+}
+function saveToolCodes(data){
+  localStorage.setItem('atf_tool_codes', JSON.stringify(data));
+}
+
+function addToolCode(){
+  const code    = document.getElementById('tmCode').value.trim();
+  const name    = document.getElementById('tmName').value.trim();
+  const op      = document.getElementById('tmOperation').value.trim();
+  const make    = document.getElementById('tmMake').value.trim();
+  const stdLife = parseFloat(document.getElementById('tmStdLife').value)||0;
+  const comp    = document.getElementById('tmComp').value;
+  if(!code||!name||!comp){showToast('Enter code, name and component','err');return;}
+  const data = getToolCodes();
+  if(!data[comp]) data[comp]=[];
+  if(data[comp].find(t=>t.code===code)){showToast('Code already exists for this component','err');return;}
+  data[comp].push({code,name,operation:op,make,stdLife});
+  saveToolCodes(data);
+  ['tmCode','tmName','tmOperation','tmMake','tmStdLife'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tmComp').value='';
+  renderToolMasterList();
+  showToast('✅ Tool code '+code+' added','ok');
+}
+
+function renderToolMasterList(){
+  const comp = document.getElementById('toolMasterComp').value;
+  const c    = document.getElementById('toolMasterList');
+  if(!comp){c.innerHTML='';return;}
+  const data  = getToolCodes();
+  const tools = data[comp]||[];
+  if(!tools.length){
+    c.innerHTML=`<div style="font-size:12px;color:var(--fog);padding:10px;text-align:center">No tool codes added for ${comp} yet.</div>`;
+    return;
+  }
+  c.innerHTML=`
+    <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">${comp} — ${tools.length} tool codes</div>
+    ${tools.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:var(--r);margin-bottom:5px">
+        <div style="flex-shrink:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#c4b5fd">${t.code}</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--white)">${t.name}</div>
+          <div style="font-size:10px;color:var(--fog)">${t.operation||'—'} · ${t.make||'—'} · Life: ${t.stdLife||'—'} pcs</div>
+        </div>
+        <button onclick="removeToolCode('${comp}',${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0">×</button>
+      </div>`).join('')}`;
+}
+
+function removeToolCode(comp,idx){
+  const data = getToolCodes();
+  if(!data[comp]) return;
+  if(!confirm('Remove '+data[comp][idx].code+' from '+comp+'?')) return;
+  data[comp].splice(idx,1);
+  saveToolCodes(data);
+  renderToolMasterList();
+  showToast('Removed');
+}
+
+// ═══════════════════════════════════════════
+// DEDICATED TOOL CHANGE ENTRY
+// ═══════════════════════════════════════════
+let toolChangeLogs = JSON.parse(localStorage.getItem('atf_tc_logs')||'[]');
+let tcStickyData   = {}; // remembers site/date/shift/supervisor between entries
+
+function initToolChangeTab(){
+  // Populate site dropdown
+  const sel = document.getElementById('tc-site');
+  const cur = sel.value;
+  const siteData = getSiteData();
+  sel.innerHTML = '<option value="">— Select —</option>';
+  Object.entries(siteData).forEach(([id,site])=>{
+    const opt = document.createElement('option');
+    opt.value=id; opt.textContent=site.name;
+    if(id===cur||id===tcStickyData.site) opt.selected=true;
+    sel.appendChild(opt);
+  });
+
+  // Restore sticky data
+  if(tcStickyData.site)       { document.getElementById('tc-site').value       = tcStickyData.site; onTCSiteChange(true); }
+  if(tcStickyData.date)         document.getElementById('tc-date').value         = tcStickyData.date;
+  if(tcStickyData.shift)        document.getElementById('tc-shift').value        = tcStickyData.shift;
+  if(tcStickyData.supervisor)   document.getElementById('tc-supervisor').value   = tcStickyData.supervisor;
+
+  // Populate supervisor dropdown
+  const supSel = document.getElementById('tc-supervisor');
+  const curSup = supSel.value;
+  const sups = getSupervisors();
+  supSel.innerHTML='<option value="">— Select —</option>';
+  sups.forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s;o.textContent=s;
+    if(s===curSup||s===tcStickyData.supervisor) o.selected=true;
+    supSel.appendChild(o);
+  });
+
+  renderTCTodayList();
+}
+
+function onTCSiteChange(silent){
+  const site = document.getElementById('tc-site').value;
+  const compSel = document.getElementById('tc-component');
+  compSel.innerHTML='<option value="">— Select component —</option>';
+  document.getElementById('tc-machine').innerHTML='<option value="">— Select component —</option>';
+  document.getElementById('tc-toolcode').innerHTML='<option value="">— Select component first —</option>';
+  document.getElementById('tc-tooldetails').style.display='none';
+  document.getElementById('tc-lifeindicator').style.display='none';
+  if(!site) return;
+  const siteData = getSiteData();
+  const components = Object.keys(siteData[site]?.components||{});
+  components.forEach(comp=>{
+    const o=document.createElement('option');
+    o.value=comp;o.textContent=comp;
+    if(tcStickyData.component===comp) o.selected=true;
+    compSel.appendChild(o);
+  });
+  if(tcStickyData.component && !silent) onTCComponentChange(true);
+}
+
+function onTCComponentChange(silent){
+  const site  = document.getElementById('tc-site').value;
+  const comp  = document.getElementById('tc-component').value;
+  const mcSel = document.getElementById('tc-machine');
+  const tcSel = document.getElementById('tc-toolcode');
+  const ntSel = document.getElementById('tc-newtool');
+  mcSel.innerHTML='<option value="">— Select machine —</option>';
+  tcSel.innerHTML='<option value="">— Select tool —</option>';
+  ntSel.innerHTML='<option value="">— Same tool code —</option>';
+  document.getElementById('tc-tooldetails').style.display='none';
+  document.getElementById('tc-lifeindicator').style.display='none';
+  if(!site||!comp) return;
+
+  // Machines
+  const siteData = getSiteData();
+  const machines = siteData[site]?.components[comp]||[];
+  machines.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m.no;o.textContent='M/C '+m.no+' '+m.type;
+    if(tcStickyData.machine===m.no) o.selected=true;
+    mcSel.appendChild(o);
+  });
+
+  // Tool codes from master
+  const toolData = getToolCodes();
+  const tools    = toolData[comp]||[];
+  if(tools.length){
+    tools.forEach(t=>{
+      const label=`${t.code} — ${t.name}`;
+      [tcSel,ntSel].forEach(sel=>{
+        const o=document.createElement('option');
+        o.value=t.code;o.textContent=label;o.dataset.tool=JSON.stringify(t);
+        sel.appendChild(o);
+      });
+    });
+    tcSel.innerHTML = '<option value="">— Select tool code —</option>'+tcSel.innerHTML.replace('<option value="">— Select tool —</option>','');
+  } else {
+    tcSel.innerHTML='<option value="">— No tools added for '+comp+' yet. Go to Settings —</option>';
+  }
+}
+
+function onTCToolChange(){
+  const sel  = document.getElementById('tc-toolcode');
+  const opt  = sel.options[sel.selectedIndex];
+  const det  = document.getElementById('tc-tooldetails');
+  const ind  = document.getElementById('tc-lifeindicator');
+  if(!opt||!opt.dataset.tool){det.style.display='none';ind.style.display='none';return;}
+  const t = JSON.parse(opt.dataset.tool);
+  document.getElementById('tc-operation').value = t.operation||'—';
+  document.getElementById('tc-make').value      = t.make||'—';
+  document.getElementById('tc-stdlife').value   = t.stdLife||'—';
+  det.style.display='block';
+  ind.style.display='none';
+  document.getElementById('tc-lifeachieved').value='';
+  // Listen for life achieved input
+  document.getElementById('tc-lifeachieved').oninput = function(){
+    const achieved = parseFloat(this.value)||0;
+    const std      = parseFloat(t.stdLife)||0;
+    if(!achieved||!std){ind.style.display='none';return;}
+    const pct = Math.round((achieved/std)*100);
+    ind.style.display='block';
+    if(pct>=90){
+      ind.style.cssText='display:block;margin-bottom:9px;padding:7px 10px;border-radius:var(--r);font-size:11px;font-weight:600;text-align:center;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)';
+      ind.textContent=`✅ Good life — ${achieved} pcs (${pct}% of standard ${std} pcs)`;
+    } else if(pct>=70){
+      ind.style.cssText='display:block;margin-bottom:9px;padding:7px 10px;border-radius:var(--r);font-size:11px;font-weight:600;text-align:center;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--amber)';
+      ind.textContent=`⚡ Below standard — ${achieved} pcs (${pct}% of standard ${std} pcs)`;
+    } else {
+      ind.style.cssText='display:block;margin-bottom:9px;padding:7px 10px;border-radius:var(--r);font-size:11px;font-weight:600;text-align:center;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)';
+      ind.textContent=`🚫 Significantly low — ${achieved} pcs (${pct}% of standard ${std} pcs) — Check cause`;
+    }
+  };
+}
+
+function submitToolChange(){
+  const site       = document.getElementById('tc-site').value;
+  const date       = document.getElementById('tc-date').value;
+  const shift      = document.getElementById('tc-shift').value;
+  const comp       = document.getElementById('tc-component').value;
+  const machine    = document.getElementById('tc-machine').value;
+  const toolCode   = document.getElementById('tc-toolcode').value;
+  const reason     = document.getElementById('tc-reason').value;
+  const supervisor = document.getElementById('tc-supervisor').value;
+  const lifeAch    = parseFloat(document.getElementById('tc-lifeachieved').value)||0;
+  const newTool    = document.getElementById('tc-newtool').value;
+  const remarks    = document.getElementById('tc-remarks').value;
+
+  if(!site)      {showToast('Select site','err');return;}
+  if(!date)      {showToast('Select date','err');return;}
+  if(!shift)     {showToast('Select shift','err');return;}
+  if(!comp)      {showToast('Select component','err');return;}
+  if(!machine)   {showToast('Select machine','err');return;}
+  if(!toolCode)  {showToast('Select tool code','err');return;}
+  if(!reason)    {showToast('Select change reason','err');return;}
+  if(!supervisor){showToast('Select supervisor','err');return;}
+
+  // Get tool details
+  const sel = document.getElementById('tc-toolcode');
+  const opt = sel.options[sel.selectedIndex];
+  const toolDetails = opt?.dataset?.tool ? JSON.parse(opt.dataset.tool) : {};
+  const siteData = getSiteData();
+
+  const entry = {
+    id:'tc'+Date.now(),
+    site, siteName:siteData[site]?.name||site,
+    date, shift, supervisor, comp, machine,
+    toolCode, toolName:toolDetails.name||toolCode,
+    operation:toolDetails.operation||'',
+    make:toolDetails.make||'',
+    stdLife:toolDetails.stdLife||0,
+    lifeAchieved:lifeAch,
+    changeReason:reason,
+    newToolFitted:newTool||toolCode,
+    remarks,
+    loggedAt:new Date().toISOString(),
+  };
+
+  toolChangeLogs.unshift(entry);
+  localStorage.setItem('atf_tc_logs',JSON.stringify(toolChangeLogs));
+
+  // Save sticky data for next entry
+  tcStickyData = {site,date,shift,supervisor,component:comp,machine};
+
+  // Push to Google Sheets if connected
+  if(cpcSettings.sheetsUrl){
+    try{
+      fetch(cpcSettings.sheetsUrl,{
+        method:'POST',mode:'no-cors',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...entry,type:'TOOL_CHANGE'})
+      });
+    }catch(e){}
+  }
+
+  // Reset only tool-specific fields, keep site/date/shift/supervisor/component/machine
+  document.getElementById('tc-toolcode').value='';
+  document.getElementById('tc-reason').value='';
+  document.getElementById('tc-lifeachieved').value='';
+  document.getElementById('tc-newtool').value='';
+  document.getElementById('tc-remarks').value='';
+  document.getElementById('tc-tooldetails').style.display='none';
+  document.getElementById('tc-lifeindicator').style.display='none';
+
+  renderTCTodayList();
+  showToast('✅ Tool change logged — log next change','ok');
+}
+
+function renderTCTodayList(){
+  const today   = new Date().toISOString().split('T')[0];
+  const todayTC = toolChangeLogs.filter(t=>t.date===today);
+  document.getElementById('tcTodayCount').textContent = todayTC.length;
+  const c = document.getElementById('tcTodayList');
+  if(!todayTC.length){
+    c.innerHTML='<div class="empty"><div class="empty-icon">🔧</div><p>No tool changes logged today.<br/>Use the form above.</p></div>';
+    return;
+  }
+  c.innerHTML = todayTC.map((t,i)=>{
+    const pct = t.stdLife>0?Math.round((t.lifeAchieved/t.stdLife)*100):null;
+    const color = pct===null?'#64748b':pct>=90?'#10b981':pct>=70?'#f59e0b':'#ef4444';
+    const shiftColor = {A:'#f59e0b',B:'#8b5cf6',C:'#3b82f6'}[t.shift]||'#64748b';
+    return`<div style="background:var(--steel);border:1px solid var(--iron);border-radius:var(--r2);margin-bottom:7px;overflow:hidden;border-left:3px solid ${color}">
+      <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px">
+        <div style="width:22px;height:22px;background:rgba(139,92,246,.15);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#c4b5fd;flex-shrink:0">${todayTC.length-i}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#c4b5fd">${t.toolCode}</span>
+            <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--fog)">M/C ${t.machine}</span>
+            <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(245,158,11,.1);color:${shiftColor}">${t.shift} Shift</span>
+          </div>
+          <div style="font-size:12px;font-weight:500;color:var(--white);margin-bottom:2px">${t.toolName}</div>
+          <div style="font-size:10px;color:var(--fog)">${t.comp} · ${t.operation||'—'} · ${t.make||'—'}</div>
+          <div style="font-size:10px;margin-top:3px">
+            <span style="color:${color};font-weight:600">Life: ${t.lifeAchieved||'—'} pcs${pct!==null?' ('+pct+'% of std '+t.stdLife+')':''}</span>
+            <span style="color:var(--fog);margin-left:6px">· ${t.changeReason}</span>
+          </div>
+          ${t.newToolFitted&&t.newToolFitted!==t.toolCode?`<div style="font-size:10px;color:var(--green);margin-top:2px">↳ New: ${t.newToolFitted}</div>`:''}
+        </div>
+        <button onclick="deleteTCEntry('${t.id}')" style="background:none;border:none;color:rgba(239,68,68,.4);cursor:pointer;font-size:14px;flex-shrink:0">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteTCEntry(id){
+  if(!confirm('Delete this tool change entry?')) return;
+  toolChangeLogs = toolChangeLogs.filter(t=>t.id!==id);
+  localStorage.setItem('atf_tc_logs',JSON.stringify(toolChangeLogs));
+  renderTCTodayList();
+  showToast('Deleted');
+}
+
+function exportTCCSV(){
+  if(!toolChangeLogs.length){showToast('No tool changes to export','err');return;}
+  const headers=['Date','Site','Shift','Supervisor','Component','Machine','Tool Code','Tool Name','Operation','Make','Std Life','Life Achieved','% of Standard','Change Reason','New Tool','Remarks'];
+  const rows=toolChangeLogs.map(t=>{
+    const pct=t.stdLife>0?Math.round((t.lifeAchieved/t.stdLife)*100):'';
+    return[t.date,t.siteName,t.shift,t.supervisor,t.comp,t.machine,
+      t.toolCode,t.toolName,t.operation,t.make,t.stdLife,t.lifeAchieved,pct,
+      t.changeReason,t.newToolFitted,t.remarks||''].map(v=>`"${v||''}"`).join(',');
+  });
+  const csv=[headers.join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`ATF_ToolChanges_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('📥 CSV downloaded','ok');
+}
+
+// ═══════════════════════════════════════════
+// PIN LOCK SYSTEM
+// ═══════════════════════════════════════════
+let pinEntry = '';
+let settingsUnlocked = false;
+
+function getPin(){ return localStorage.getItem('atf_cpc_pin') || '1234'; }
+
+function pinPress(k){
+  if(k==='⌫'){ pinEntry=pinEntry.slice(0,-1); }
+  else if(k!==''&&pinEntry.length<4){ pinEntry+=String(k); }
+  updatePinDots();
+  if(pinEntry.length===4) checkPin();
+}
+
+function updatePinDots(){
+  for(let i=1;i<=4;i++){
+    const dot=document.getElementById('pd'+i);
+    dot.style.background = i<=pinEntry.length ? 'var(--amber)' : 'transparent';
+    dot.style.borderColor = i<=pinEntry.length ? 'var(--amber)' : 'var(--slate)';
+  }
+}
+
+function checkPin(){
+  if(pinEntry===getPin()){
+    settingsUnlocked=true;
+    document.getElementById('settingsLock').style.display='none';
+    document.getElementById('settingsContent').style.display='block';
+    pinEntry='';
+    updatePinDots();
+    renderSettings();
+  } else {
+    document.getElementById('pinError').textContent='❌ Wrong PIN — try again';
+    setTimeout(()=>{
+      pinEntry='';
+      updatePinDots();
+      document.getElementById('pinError').textContent='';
+    },1200);
+  }
+}
+
+function lockSettings(){
+  settingsUnlocked=false;
+  pinEntry='';
+  updatePinDots();
+  document.getElementById('settingsLock').style.display='block';
+  document.getElementById('settingsContent').style.display='none';
+  showToast('🔒 Settings locked');
+}
+
+function changePin(){
+  const cur = document.getElementById('currentPin').value;
+  const nw  = document.getElementById('newPin').value;
+  if(cur!==getPin()){showToast('Current PIN is wrong','err');return;}
+  if(nw.length!==4||!/^\d{4}$/.test(nw)){showToast('New PIN must be exactly 4 digits','err');return;}
+  localStorage.setItem('atf_cpc_pin',nw);
+  document.getElementById('currentPin').value='';
+  document.getElementById('newPin').value='';
+  showToast('✅ PIN changed successfully','ok');
+}
+
+// Lock settings when switching away from settings tab
+function switchTab(t){
+  ['log','dashboard','toolchange','morning','settings'].forEach(p=>{
+    document.getElementById('pane-'+p).classList.toggle('active',p===t);
+    document.getElementById('tab-'+p).classList.toggle('active',p===t);
+  });
+  // Auto-lock settings when leaving
+  if(t!=='settings' && settingsUnlocked) lockSettings();
+  if(t==='dashboard')  renderDashboard();
+  if(t==='toolchange') initToolChangeTab();
+  if(t==='settings'){
+    if(!settingsUnlocked){
+      document.getElementById('settingsLock').style.display='block';
+      document.getElementById('settingsContent').style.display='none';
+    }
+  }
+}
+function renderSettings(){
+  updateCPCBanner();
+  renderSupervisorList();
+  renderSiteManagement();
+  renderToolMasterList();
+  document.getElementById('cpcLogCount').textContent = logs.length;
+  if(cpcSettings.sheetsUrl) document.getElementById('cpcSheetsUrl').value=cpcSettings.sheetsUrl;
+  if(cpcSettings.rejThreshold) document.getElementById('rejThreshold').value=cpcSettings.rejThreshold;
+  if(cpcSettings.warnThreshold) document.getElementById('warnThreshold').value=cpcSettings.warnThreshold;
+}
+
+// ── GOOGLE SHEETS ──
+function saveCPCSheetUrl(){
+  cpcSettings.sheetsUrl = document.getElementById('cpcSheetsUrl').value.trim();
+  localStorage.setItem('atf_cpc_settings',JSON.stringify(cpcSettings));
+  updateCPCBanner();
+  showToast('✅ URL saved','ok');
+}
+
+function updateCPCBanner(){
+  const b = document.getElementById('cpcConnBanner');
+  if(!b) return;
+  if(cpcSettings.sheetsUrl){
+    b.style.cssText='border-radius:var(--r);padding:10px 13px;margin-bottom:12px;font-size:11px;line-height:1.6;border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.08);color:#6ee7b7';
+    b.textContent='✅ Connected — every shift log auto-logs to your Google Sheet. Open in Excel anytime for analysis.';
+  } else {
+    b.style.cssText='border-radius:var(--r);padding:10px 13px;margin-bottom:12px;font-size:11px;line-height:1.6;border:1px solid var(--slate);background:var(--steel);color:var(--fog)';
+    b.textContent='⚡ Not connected — shift logs save on this device only. Add Google Sheets URL below to auto-log all submissions for analysis.';
+  }
+}
+
+async function testCPCConnection(){
+  const url = document.getElementById('cpcSheetsUrl').value.trim();
+  if(!url){showToast('Paste a URL first','err');return;}
+  showToast('Testing...');
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'CONNECTION_TEST',timestamp:new Date().toISOString()})});
+    showToast('✅ Connection looks good — save the URL','ok');
+  }catch(e){showToast('❌ Could not reach URL','err');}
+}
+
+function copyCPCScript(){
+  const code = document.getElementById('cpcScriptBox').textContent;
+  navigator.clipboard.writeText(code).then(()=>showToast('📋 Script copied','ok'));
+}
+
+// ── SUPERVISORS ──
+function renderSupervisorList(){
+  const sups = getSupervisors();
+  const c = document.getElementById('supervisorList');
+  c.innerHTML = sups.length ? sups.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);margin-bottom:6px">
+      <span style="font-size:16px">👷</span>
+      <span style="flex:1;font-size:13px;font-weight:500;color:var(--mist)">${s}</span>
+      <button onclick="removeSupervisor(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 4px">×</button>
+    </div>`).join('')
+    : '<div style="font-size:12px;color:var(--fog);padding:8px">No supervisors added yet.</div>';
+}
+
+function addSupervisor(){
+  const name = document.getElementById('newSupName').value.trim();
+  if(!name){showToast('Enter supervisor name','err');return;}
+  const sups = getSupervisors();
+  if(sups.find(s=>s.toLowerCase()===name.toLowerCase())){showToast('Already in list','err');return;}
+  sups.push(name);
+  localStorage.setItem('atf_cpc_supervisors',JSON.stringify(sups));
+  document.getElementById('newSupName').value='';
+  renderSupervisorList();
+  populateSupervisorDropdown();
+  showToast('✅ '+name+' added','ok');
+}
+
+function removeSupervisor(idx){
+  const sups = getSupervisors();
+  if(!confirm('Remove '+sups[idx]+'?')) return;
+  sups.splice(idx,1);
+  localStorage.setItem('atf_cpc_supervisors',JSON.stringify(sups));
+  renderSupervisorList();
+  populateSupervisorDropdown();
+  showToast('Removed');
+}
+
+// ── SITE MANAGEMENT ──
+function renderSiteManagement(){
+  const siteData = getSiteData();
+  const c = document.getElementById('siteManagementView');
+  c.innerHTML = Object.entries(siteData).map(([siteId,site])=>`
+    <div style="background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--slate)">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--green);flex:1">${site.name}</span>
+        <span style="font-size:10px;color:var(--fog)">${Object.values(site.components).flat().length} machines</span>
+        ${siteId!=='site1'&&siteId!=='site2'?`<button onclick="removeSite('${siteId}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:600">Remove Site</button>`:''}
+      </div>
+      ${Object.entries(site.components).map(([comp,machines])=>`
+        <div style="padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:var(--amber);width:80px;flex-shrink:0">${comp}</span>
+          <span style="font-size:11px;color:var(--fog);flex:1">${machines.map(m=>'M/C '+m.no+' '+m.type).join(' · ')}</span>
+          <button onclick="openAddMachineModal('${siteId}','${comp}')" style="background:none;border:1px solid var(--slate);border-radius:5px;color:var(--fog);cursor:pointer;font-size:10px;font-weight:600;padding:3px 7px;flex-shrink:0">+ Machine</button>
+        </div>`).join('')}
+      <div style="padding:9px 12px">
+        <button onclick="openAddComponentModal('${siteId}')" style="width:100%;padding:7px;background:none;border:1.5px dashed var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer">+ Add Component to ${site.name}</button>
+      </div>
+    </div>`).join('');
+}
+
+function addNewSite(){
+  const id   = document.getElementById('newSiteId').value.trim().replace(/\s/g,'');
+  const name = document.getElementById('newSiteName').value.trim();
+  const comp = document.getElementById('newSiteComp').value.trim();
+  const mcsRaw = document.getElementById('newSiteMachines').value.trim();
+  if(!id||!name){showToast('Enter site ID and name','err');return;}
+  if(!comp||!mcsRaw){showToast('Enter at least one component and machine','err');return;}
+  const siteData = getSiteData();
+  if(siteData[id]){showToast('Site ID already exists — use a different ID','err');return;}
+  const machines = mcsRaw.split(',').map(m=>{
+    const parts=m.trim().split(' ');
+    const type=parts.length>1?parts.slice(1).join(' '):'';
+    return {no:parts[0],type};
+  }).filter(m=>m.no);
+  siteData[id]={name, components:{[comp]:machines}};
+  saveSiteData(siteData);
+  ['newSiteId','newSiteName','newSiteComp','newSiteMachines'].forEach(id=>document.getElementById(id).value='');
+  renderSiteManagement();
+  populateSiteDropdown();
+  showToast('🏭 '+name+' added','ok');
+}
+
+function removeSite(siteId){
+  if(!confirm('Remove this site and all its machine data from the app?\n\nExisting shift logs will be kept.')) return;
+  const siteData = getSiteData();
+  delete siteData[siteId];
+  saveSiteData(siteData);
+  renderSiteManagement();
+  populateSiteDropdown();
+  showToast('Site removed');
+}
+
+function openAddComponentModal(siteId){
+  const siteData = getSiteData();
+  const site = siteData[siteId];
+  const comp = prompt(`Add new component to ${site.name}\nEnter component name (e.g. C229):`);
+  if(!comp) return;
+  const mcsRaw = prompt(`Enter machine numbers for ${comp}\n(comma separated, e.g. 201 FRD, 202 Brother):`);
+  if(!mcsRaw) return;
+  const machines = mcsRaw.split(',').map(m=>{
+    const parts=m.trim().split(' ');
+    const type=parts.length>1?parts.slice(1).join(' '):'';
+    return {no:parts[0],type};
+  }).filter(m=>m.no);
+  if(!siteData[siteId].components) siteData[siteId].components={};
+  siteData[siteId].components[comp]=machines;
+  saveSiteData(siteData);
+  renderSiteManagement();
+  showToast('✅ Component '+comp+' added','ok');
+}
+
+function openAddMachineModal(siteId,comp){
+  const siteData = getSiteData();
+  const mcsRaw = prompt(`Add machines to ${comp} at ${siteData[siteId].name}\nEnter machine numbers (comma separated, e.g. 205 FRD, 206 Brother):`);
+  if(!mcsRaw) return;
+  const newMachines = mcsRaw.split(',').map(m=>{
+    const parts=m.trim().split(' ');
+    const type=parts.length>1?parts.slice(1).join(' '):'';
+    return {no:parts[0],type};
+  }).filter(m=>m.no);
+  siteData[siteId].components[comp] = [...(siteData[siteId].components[comp]||[]),...newMachines];
+  saveSiteData(siteData);
+  renderSiteManagement();
+  showToast('✅ Machines added to '+comp,'ok');
+}
+
+// ── THRESHOLDS ──
+function saveThresholds(){
+  cpcSettings.rejThreshold  = parseFloat(document.getElementById('rejThreshold').value)||3;
+  cpcSettings.warnThreshold = parseFloat(document.getElementById('warnThreshold').value)||1;
+  localStorage.setItem('atf_cpc_settings',JSON.stringify(cpcSettings));
+  showToast('✅ Thresholds saved','ok');
+}
+
+// ── EXPORT ──
+function exportCPCCSV(){
+  if(!logs.length){showToast('No logs to export','err');return;}
+  const headers=['Date','Site','Shift','Supervisor','Total Production','Total Rejection','Rejection %','Tool Changes','Shift Notes'];
+  const rows=logs.map(l=>[
+    l.date,l.siteName,l.shift,l.supervisor,
+    l.totalProduction,l.totalRejection,l.rejectionPct,
+    l.toolChanges?.length||0,
+    (l.shiftNotes||'').replace(/,/g,' ')
+  ].map(v=>`"${v||''}"`).join(','));
+  const csv=[headers.join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`ATF_CPC_Logs_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('📥 CSV downloaded','ok');
+}
+
+function clearCPCData(){
+  if(!confirm('Delete ALL CPC shift log data from this device?\n\nThis cannot be undone. Export CSV first if needed.')) return;
+  logs=[];localStorage.removeItem('atf_cpc_logs');
+  renderDashboard();document.getElementById('cpcLogCount').textContent='0';
+  showToast('Data cleared');
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+let _tt;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast show'+(type?' '+type:'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);
+}
+</script>
+</body>
+</html>
