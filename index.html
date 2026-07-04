@@ -251,9 +251,12 @@ select option{background:var(--steel);color:var(--white)}
           <label>Supervisor <span class="req">*</span></label>
           <select id="supervisor">
             <option value="">— Select —</option>
-            <option>Supervisor A</option>
-            <option>Supervisor B</option>
-            <option>Supervisor C</option>
+            <option>Gopal Das</option>
+            <option>Gautam Tayde</option>
+            <option>Prashant</option>
+            <option>Kamlesh</option>
+            <option>Sinchal</option>
+            <option>Vijay</option>
           </select>
         </div>
       </div>
@@ -909,7 +912,7 @@ function saveSiteData(data){
 function getSupervisors(){
   const saved = localStorage.getItem('atf_cpc_supervisors');
   if(saved) return JSON.parse(saved);
-  return ['Supervisor A','Supervisor B','Supervisor C']; // default
+  return ['Gopal Das','Gautam Tayde','Prashant','Kamlesh','Sinchal','Vijay'];
 }
 
 function getThresholds(){
@@ -1510,8 +1513,168 @@ function sendMorningTeams(){
 // TOOL CODE MASTER
 // ═══════════════════════════════════════════
 function getToolCodes(){
-  return JSON.parse(localStorage.getItem('atf_tool_codes') || '{}');
-  // Structure: { 'A506 Body': [{code,name,operation,make,stdLife},...], ... }
+  const saved = localStorage.getItem('atf_tool_codes');
+  if(saved) return JSON.parse(saved);
+  // DEFAULT — hardcoded from SAP Code Projectwise sheet
+  return {
+    'A897 Shaft':[
+      {code:'CU16AF01118S',name:'DCGT11T304N-JS AH725',operation:'Turning',make:'Tungloy',stdLife:1500},
+      {code:'CU04IN000050',name:'VBGT110304FN-JS SH725',operation:'Turning',make:'Tungloy',stdLife:1800},
+      {code:'CU04IN000051',name:'TDC 2 TT8020',operation:'Turning',make:'Tegutec',stdLife:5000},
+      {code:'CU01SC000257',name:'Ø2x5.0 HSS Pilot Center Drill',operation:'Drilling',make:'Smith International',stdLife:7500},
+      {code:'CU01SC000258',name:'SC Chamfer Tool D3.6',operation:'Chamfering',make:'Om Tools',stdLife:31125},
+      {code:'RE01SC000258',name:'SC Drill Ø2.8xFL10xOAL40xSH4',operation:'Drilling',make:'Om Tools',stdLife:16667},
+      {code:'CU01SC000259',name:'SC Reamer Ø3.0xFL10xOAL40xSH4',operation:'Reaming',make:'Om Tools',stdLife:15000},
+      {code:'RE01SC000259',name:'RE SC Reamer Ø3.0xFL10xOAL40xSH4',operation:'Reaming',make:'Om Tools',stdLife:15000},
+    ],
+    'B128':[
+      {code:'CU03AB36702B',name:'PCD REAMER D29.95XFL30XOL80XSH20X4F',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB36702B',name:'RE PCD REAMER D29.95XFL30XOL80XSH20X4F',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU01AC29902F',name:'SC STEP DRILL D5XSL14XD7XOAL78XSH8',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'RE01AC29902F',name:'RE SC STEP DRILL D5XSL14XD7XOAL78XSH8',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'CU02AA01001D',name:'M6x1 6H Cut Tap',operation:'Tapping',make:'Emkey Taps',stdLife:960},
+      {code:'CU01AC30002F',name:'SC DRILL D3XFL35XOAL78XSH6',operation:'Drilling',make:'Om Tools',stdLife:3333},
+      {code:'RE01AC30002F',name:'RE SC DRILL D3XFL35XOAL78XSH6',operation:'Drilling',make:'Om Tools',stdLife:3333},
+      {code:'CU04AA34402F',name:'SC BALL NOSE D13.5XFL45XOAL108XSH',operation:'Milling',make:'Om Tools',stdLife:100000},
+      {code:'RE04AA34402F',name:'RE SC BALL NOSE D13.5XFL45XOAL108XSH',operation:'Milling',make:'Om Tools',stdLife:100000},
+      {code:'CU01AC30102F',name:'SC DRILL D7XFL35X OAL78XSH8',operation:'Drilling',make:'Om Tools',stdLife:35000},
+      {code:'RE01AC30102F',name:'RE SC DRILL D7XFL35X OAL78XSH8',operation:'Drilling',make:'Om Tools',stdLife:35000},
+      {code:'CU01AF00913B',name:'SC DRILL D6X12.4 OAL78XSH12',operation:'Drilling',make:'Om Tools',stdLife:66667},
+      {code:'RE01AF00913B',name:'RE SC DRILL D6X12.4 OAL78XSH12',operation:'Drilling',make:'Om Tools',stdLife:66667},
+      {code:'CU03AB37002B',name:'PCD REAMER D5.97XCHXFL30XOAL80XSH8',operation:'Reaming',make:'Global Tools',stdLife:111111},
+      {code:'RE03AB37002B',name:'RE PCD REAMER D5.97XCHXFL30XOAL80XSH8',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU03AB37202B',name:'PCD REAMER D8XCHXFL25XOAL80XSH10',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB37202B',name:'RET PCD REAMER D8XCHXFL25XOAL80XSH10',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU03AB57103B',name:'PCD OD TRIPPENING TOOL D15.5XOL80XSH20',operation:'Turning',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB57103B',name:'RE PCD OD TRIPPENING TOOL D15.5XOL80XSH20',operation:'Turning',make:'Global Tools',stdLife:100000},
+      {code:'CU01AD09602F',name:'SC DRILL D5XD6.5XSL13XFL30XOL80XSH8',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'RE01AD09602F',name:'RE SC DRILL D5XD6.5XSL13XFL30XOL80XSH8',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'CU03AB37402B',name:'PCD REAMER D12.7XCHXFL30XOAL80XSH14',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB37402B',name:'RET PCD REAMER D12.7XCHXFL30XOAL80XSH14',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU03AB37302B',name:'PCD REAMER D20.98XCHXOAL80XSH20',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB37302B',name:'RE PCD REAMER D20.98XCHXOAL80XSH20',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU16AB00402B',name:'Boring Bar D36.6 INS CCGT 09T304 AL H10',operation:'Boring',make:'Shabbar',stdLife:5000},
+      {code:'CU03AB37102B',name:'PCD REAMER D10.54XCHXOL80XSH12',operation:'Reaming',make:'Global Tools',stdLife:90000},
+      {code:'RE03AB37102B',name:'RE PCD REAMER D10.54XCHXOL80XSH12',operation:'Reaming',make:'Global Tools',stdLife:90000},
+      {code:'CU03AB36802B',name:'PCD REAMER D24XFL30XOAL80XSH20X2F',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB36802B',name:'RE PCD REAMER D24XFL30XOAL80XSH20X2F',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU03AB36902B',name:'PCD REAMER D27.97XCHXOAL80XSH20',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB36902B',name:'RE PCD REAMER D27.97XCHXOAL80XSH20',operation:'Reaming',make:'Global Tools',stdLife:100000},
+    ],
+    'A506 Body':[
+      {code:'CU26AA02812B',name:'SC WOODRUFF CUTTER D20XSH12XOAL80',operation:'Milling',make:'Om Tools',stdLife:23500},
+      {code:'CU04AA13604F',name:'HSS END MILL D16XOAL125',operation:'Milling',make:'Smith International',stdLife:60000},
+      {code:'RE04AA13604F',name:'RE HSS END MILL D16XOAL125',operation:'Milling',make:'Smith International',stdLife:60000},
+      {code:'CU01AG06102F',name:'SC STEP DRILL D5XD7XFL25XSH8XOAL70',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'RE01AG06102F',name:'RE SC STEP DRILL D5XD7XFL25XSH8XOAL70',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'CU16BM00102S',name:'TCGT090204 AK H01',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU16BM00902S',name:'INS TCGT110204 AL K901 (For D31)',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU16AQ03102S',name:'INS FULL EDGE PCD TCMT 110204 (For D31)',operation:'Turning',make:'Rudrali',stdLife:4167},
+      {code:'CU01AG06202F',name:'SC STEP DRILL D13XD14.5XD18XOAL125',operation:'Drilling',make:'Om Tools',stdLife:15000},
+      {code:'RE01AG06202F',name:'RE SC STEP DRILL D13XD14.5XD18XOAL125',operation:'Drilling',make:'Om Tools',stdLife:15000},
+      {code:'CU02AA01901B',name:'TAP M16 X 1.5',operation:'Tapping',make:'Emkey Taps',stdLife:20000},
+      {code:'CU01AD07602F',name:'SC DRILL D10XFL75XSH10XOAL125 2FL',operation:'Drilling',make:'Om Tools',stdLife:10000},
+      {code:'RE01AD07602F',name:'RE SC DRILL D10XFL75XSH10XOAL125 2FL',operation:'Drilling',make:'Om Tools',stdLife:10000},
+      {code:'CU09AA00415A',name:'ABRASIVE BRISTLE CUP BRUSH 80X25X25',operation:'Deburring',make:'Deburring India',stdLife:60000},
+      {code:'CU16BB02617S',name:'PCD INSERT XNEW 09T3 DA2200',operation:'Turning',make:'Rudrali',stdLife:37500},
+      {code:'CU26AA02306B',name:'SC GROOVE CUTTER D18XW5XSH10XOAL80',operation:'Grooving',make:'Om Tools',stdLife:20000},
+      {code:'CU03AB17604B',name:'PCD REAMER D26XD28XSH20XOAL80 4FL',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB17604B',name:'RE PCD REAMER D26XD28XSH20XOAL80 4FL',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU03AB17502B',name:'PCD REAMER D8XSH10XOAL70 2FL',operation:'Reaming',make:'Global Tools',stdLife:71429},
+      {code:'RE03AB17502B',name:'RE PCD REAMER D8XSH10XOAL70 2FL',operation:'Reaming',make:'Global Tools',stdLife:71429},
+      {code:'CU04IN000040',name:'OD Trippening Rough Insert',operation:'Turning',make:'Shabbar',stdLife:10000},
+      {code:'CU04IN000028',name:'TPGX060102 LNX2525 PCD (D41)',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU04IN000029',name:'TBGT060104 OD Trippening Insert (D41)',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU04IN000030',name:'CGPT 060204 OD Trippening',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU04IN000031',name:'CCGT 060204 PCD Insert',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU02AA01001D',name:'TAP M6 X 1 6H TICN COATED',operation:'Tapping',make:'Emkey Taps',stdLife:5300},
+    ],
+    'A506 Cover':[
+      {code:'CU26AA02812B',name:'SC WOODRUFF CUTTER D20XSH12XOAL80',operation:'Milling',make:'Om Tools',stdLife:23500},
+      {code:'CU04AA13604F',name:'HSS END MILL D16XOAL125',operation:'Milling',make:'Smith International',stdLife:60000},
+      {code:'CU16BM00102S',name:'TCGT090204 AK H01',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU16BB02617S',name:'PCD INSERT XNEW 09T3 DA2200',operation:'Turning',make:'Rudrali',stdLife:37500},
+      {code:'CU03AB17502B',name:'PCD REAMER D8XSH10XOAL70 2FL',operation:'Reaming',make:'Global Tools',stdLife:71429},
+      {code:'CU02AA01001D',name:'TAP M6 X 1 6H TICN COATED',operation:'Tapping',make:'Emkey Taps',stdLife:5300},
+    ],
+    'A897 Body':[
+      {code:'CU03AB22502B',name:'PCD REAMER D8XSH10XFL20XOL80 BODY',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB22502B',name:'RE PCD REAMER D8XSH10XFL20XOL80 BODY',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU01AD02902A',name:'SOLID CARBIDE DRILL D5.50 XFL57 XOAL93',operation:'Drilling',make:'Om Tools',stdLife:15000},
+      {code:'RE01AD02902A',name:'RE SOLID CARBIDE DRILL D5.50 XFL57 XOAL93',operation:'Drilling',make:'Om Tools',stdLife:15000},
+      {code:'CU01AD09502F',name:'SC DRILL D4XFL20X650ALXSH6',operation:'Drilling',make:'Om Tools',stdLife:25000},
+      {code:'RE01AD09502F',name:'RE SC DRILL D4XFL20X650ALXSH6',operation:'Drilling',make:'Om Tools',stdLife:25000},
+      {code:'CU01AD09602F',name:'SC DRILL D5XD6.5XSL13XFL30XOL80XSH8',operation:'Drilling',make:'Om Tools',stdLife:15000},
+      {code:'RE01AD09602F',name:'RE SC DRILL D5XD6.5XSL13XFL30XOL80XSH8',operation:'Drilling',make:'Om Tools',stdLife:15000},
+      {code:'CU04AA12904F',name:'SC BALL NOSE ENDMILL D13XFL30XOL110XSH14',operation:'Milling',make:'Om Tools',stdLife:20000},
+      {code:'RE04AA12904F',name:'RE SC BALL NOSE ENDMILL D13XFL30XOL110XSH14',operation:'Milling',make:'Om Tools',stdLife:20000},
+      {code:'CU01AD08102F',name:'DOUBLE ENDED SC DRILL D2.05XOAL65',operation:'Drilling',make:'Om Tools',stdLife:20000},
+      {code:'CU16AB00402B',name:'INS CCGT 09T304 AL H10',operation:'Turning',make:'Shabbar',stdLife:15000},
+      {code:'CU16BM01402S',name:'INSERT TNMG160408 AL K901',operation:'Turning',make:'Shabbar',stdLife:40000},
+      {code:'CU16BL00902S',name:'DCGT 11T304 AL K901',operation:'Turning',make:'Shabbar',stdLife:24000},
+      {code:'CU16AB00602S',name:'INSERT CCGT 09T308T AL K901',operation:'Turning',make:'Shabbar',stdLife:15000},
+      {code:'CU16BK02402D',name:'INS GROOVING GMA200-02-K801',operation:'Grooving',make:'Sancotech',stdLife:4500},
+      {code:'CU01AG06302F',name:'SC STEP DRILL D5XFL30XSH8XOAL85',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'RE01AG06302F',name:'RE SC STEP DRILL D5XFL30XSH8XOAL85',operation:'Drilling',make:'Om Tools',stdLife:5000},
+      {code:'CU03AB22402B',name:'PCD STEP REAMER D6XSH08XFL25XOAL80',operation:'Reaming',make:'Global Tools',stdLife:73950},
+      {code:'RE03AB22402B',name:'RE PCD STEP REAMER D6XSH08XFL25XOAL80',operation:'Reaming',make:'Global Tools',stdLife:73950},
+      {code:'CU03AB22602B',name:'PCD REAMER D8XSH10XFL20XOL80 COVER',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB22602B',name:'RE PCD REAMER D8XSH10XFL20XOL80 COVER',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU16BB02147S',name:'INSERT PCD TNGA160404 JPD200',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU16BB02157S',name:'INS PCD CCMW09T302 JPD200',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU03AB22702B',name:'PCD REAMER D21XSH20XFL20XOAL80 2FL',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'RE03AB22702B',name:'RE PCD REAMER D21XSH20XFL20XOAL80 2FL',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU02AA01001D',name:'TAP M6 X 1 6H TICN COATED',operation:'Tapping',make:'Emkey Taps',stdLife:10000},
+    ],
+    'A944':[
+      {code:'CU16BB02617S',name:'PCD INSERT XNEW 09T3 DA2200',operation:'Turning',make:'Rudrali',stdLife:50000},
+      {code:'CU01AC28702F',name:'STEP DRILL Ø5XSL12XØ7.15XØ15XOL80XSH10',operation:'Drilling',make:'Om Tools',stdLife:45000},
+      {code:'RE01AC28702F',name:'RE STEP DRILL Ø5XSL12XØ7.15XØ15XOL80XSH10',operation:'Drilling',make:'Om Tools',stdLife:45000},
+      {code:'CU01AC30802F',name:'CORE DRILL D11.4X12.9XOL150',operation:'Drilling',make:'Om Tools',stdLife:12371},
+      {code:'RE01AC30802F',name:'RE CORE DRILL D11.4X12.9XOL150',operation:'Drilling',make:'Om Tools',stdLife:12371},
+      {code:'CU02AA07101D',name:'TAP M14X1.0 6H HSS-E DIN374',operation:'Tapping',make:'Emkey Taps',stdLife:16667},
+      {code:'CU03AB39702B',name:'PCD REAMER D12.032XL130XSH12 TH COOLANT',operation:'Reaming',make:'Global Tools',stdLife:38638},
+      {code:'RE03AB39702B',name:'RE PCD REAMER D12.032XL130XSH12 TH COOLANT',operation:'Reaming',make:'Global Tools',stdLife:38638},
+      {code:'CU09AA02214A',name:'ABRASIVE BRISTLE CUP BRUSH 60X25X25MM',operation:'Deburring',make:'Deburring India',stdLife:100000},
+      {code:'CU02AA01001D',name:'TAP M6 X 1 6H TICN COATED',operation:'Tapping',make:'Emkey Taps',stdLife:50000},
+      {code:'CU04IN000025',name:'CPGW09T302 PKD Z2 SKL3.5',operation:'Turning',make:'Shabbar',stdLife:18182},
+      {code:'CU16BB02147S',name:'INSERT PCD TNGA160404 JPD200',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CI04IN000026',name:'SNEW PCD Insert',operation:'Turning',make:'Shabbar',stdLife:5000},
+    ],
+    'B493':[
+      {code:'CU01SC000267',name:'D22 SC Endmill',operation:'Milling',make:'Global Tools',stdLife:2000},
+      {code:'RE01SC000267',name:'R/S D22 SC Endmill',operation:'Milling',make:'Global Tools',stdLife:2000},
+      {code:'CU01SC000237',name:'D16 SC Endmill',operation:'Milling',make:'Om Tools',stdLife:1000},
+      {code:'RE01SC000237',name:'R/S D16 SC Endmill',operation:'Milling',make:'Om Tools',stdLife:1000},
+      {code:'CU01SC000236',name:'D10X0.4 SC Endmill',operation:'Milling',make:'Om Tools',stdLife:400},
+      {code:'RE01SC000236',name:'R/S D10X0.4 SC Endmill',operation:'Milling',make:'Om Tools',stdLife:400},
+      {code:'CU01SC000239',name:'D10X1.5 SC Endmill',operation:'Milling',make:'Om Tools',stdLife:1700},
+      {code:'RE01SC000239',name:'R/S D10X1.5 SC Endmill',operation:'Milling',make:'Om Tools',stdLife:1700},
+      {code:'CU01SC000047',name:'D9 SC Drill',operation:'Drilling',make:'Om Tools',stdLife:1600},
+      {code:'RE01SC000047',name:'R/S D9 SC Drill',operation:'Drilling',make:'Om Tools',stdLife:1600},
+      {code:'CU01SC000238',name:'D6.85 Drill',operation:'Drilling',make:'Om Tools',stdLife:2500},
+      {code:'RE01SC000238',name:'R/S D6.85 Drill',operation:'Drilling',make:'Om Tools',stdLife:2500},
+      {code:'CU01SC000048',name:'D4 SC Drill',operation:'Drilling',make:'Om Tools',stdLife:3000},
+      {code:'RE01SC000048',name:'R/S D4 SC Drill',operation:'Drilling',make:'Om Tools',stdLife:3000},
+      {code:'CU01SC000050',name:'D10 Chamfer Tool',operation:'Chamfering',make:'Om Tools',stdLife:5000},
+      {code:'RE01SC000050',name:'R/S D10 Chamfer Tool',operation:'Chamfering',make:'Om Tools',stdLife:5000},
+      {code:'CU01SC000264',name:'D6 Chamfer Tool',operation:'Chamfering',make:'Om Tools',stdLife:3000},
+      {code:'ER01SC000264',name:'R/S D6 Chamfer Tool',operation:'Chamfering',make:'Om Tools',stdLife:3000},
+      {code:'CU04INSC0081',name:'HNGJ Insert',operation:'Milling',make:'Kennametal',stdLife:500},
+      {code:'A2024092502',name:'OAKU Insert',operation:'Milling',make:'Ceratizit',stdLife:300},
+      {code:'CU04INSC0082',name:'XNGU Insert',operation:'Milling',make:'Kennametal',stdLife:300},
+      {code:'CU04IN000016',name:'SOEX Insert',operation:'Milling',make:'Ceratizit',stdLife:400},
+      {code:'CU04IN000014',name:'SDXT Insert',operation:'Milling',make:'Shabbar',stdLife:1000},
+      {code:'CU04INSC0083',name:'CCGW Insert',operation:'Turning',make:'Sumitomo',stdLife:10000},
+      {code:'A2024041603.12',name:'SC TC REAMER D9.01X18FLX77OALX10SHD',operation:'Reaming',make:'Om Tools',stdLife:3000},
+      {code:'A2024041603.3',name:'SCTC STEP DRILL D8.7X10SLXD12X25FLX77OALX12SHD',operation:'Drilling',make:'Om Tools',stdLife:3000},
+    ],
+    'B487':[
+      {code:'CU04IN000004',name:'INSERT CCGW060204S01020F 7015',operation:'Turning',make:'Sandvik',stdLife:1200},
+      {code:'CU01SC000017',name:'D6 CBN TOOL',operation:'Turning',make:'',stdLife:700},
+      {code:'CU01SC000018',name:'SPL D3 SC FORM TOOLS SH DIA 8MM EAZYCUT',operation:'Milling',make:'Eazycut',stdLife:1000},
+    ],
+  };
 }
 function saveToolCodes(data){
   localStorage.setItem('atf_tool_codes', JSON.stringify(data));
