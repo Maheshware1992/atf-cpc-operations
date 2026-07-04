@@ -594,75 +594,148 @@ select option{background:var(--steel);color:var(--white)}
       <!-- Apps Script code -->
       <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Google Apps Script Code</div>
       <div style="font-size:10px;color:var(--fog);margin-bottom:7px;line-height:1.6">Go to <strong style="color:var(--mist)">script.google.com</strong> → New project → Paste → Deploy as Web App (Anyone) → Copy URL above</div>
-      <div id="cpcScriptBox" style="background:#0d1117;border:1px solid var(--slate);border-radius:var(--r);padding:10px;font-family:'Courier New',monospace;font-size:9px;color:#93c5fd;line-height:1.7;white-space:pre;max-height:200px;overflow:auto">function doPost(e) {
+      <div id="cpcScriptBox" style="background:#0d1117;border:1px solid var(--slate);border-radius:var(--r);padding:10px;font-family:'Courier New',monospace;font-size:9px;color:#93c5fd;line-height:1.7;white-space:pre;max-height:200px;overflow:auto">function doGet(e) {
+  // Read data for dashboard
+  var ss  = SpreadsheetApp.getActiveSpreadsheet();
+  var sh  = ss.getSheetByName('CPC_Raw_Logs');
+  if (!sh || sh.getLastRow() < 2) {
+    return ContentService
+      .createTextOutput(JSON.stringify({logs:[]}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  var date = e.parameter.date || '';
+  var site = e.parameter.site || '';
+  var rows = sh.getDataRange().getValues();
+  var headers = rows[0];
+  var logs = [];
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    var obj = {};
+    headers.forEach(function(h, j) { obj[h] = row[j]; });
+    try { obj.machineData = JSON.parse(obj.machineData || '{}'); } catch(e){}
+    try { obj.compSummary = JSON.parse(obj.compSummary || '{}'); } catch(e){}
+    try { obj.toolChanges = JSON.parse(obj.toolChanges || '[]'); } catch(e){}
+    if ((!date || obj.date === date) && (!site || obj.site === site)) {
+      logs.push(obj);
+    }
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify({logs:logs}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var d  = JSON.parse(e.postData.contents);
 
-  // Sheet 1: Shift Summary
-  var sh = ss.getSheetByName("CPC_Shift_Log")
-    || ss.insertSheet("CPC_Shift_Log");
-  if (sh.getLastRow()===0) {
-    sh.appendRow(["Date","Site","Shift","Supervisor",
-      "Total Production","Total Rejection",
-      "Rejection %","Tool Changes","Shift Notes",
-      "Logged At"]);
-    sh.getRange(1,1,1,10).setFontWeight("bold")
-      .setBackground("#1c2936").setFontColor("#ffffff");
-    sh.setFrozenRows(1);
+  // Raw log sheet — stores complete JSON for dashboard reading
+  var raw = ss.getSheetByName('CPC_Raw_Logs')
+    || ss.insertSheet('CPC_Raw_Logs');
+  if (raw.getLastRow() === 0) {
+    raw.appendRow(['id','date','site','siteName','shift',
+      'supervisor','totalProduction','totalRejection',
+      'rejectionPct','machineData','compSummary',
+      'toolChanges','shiftNotes','loggedAt']);
+    raw.getRange(1,1,1,14).setFontWeight('bold')
+      .setBackground('#1c2936').setFontColor('#ffffff');
+    raw.setFrozenRows(1);
   }
-  sh.appendRow([d.date, d.siteName, d.shift,
-    d.supervisor, d.totalProduction,
-    d.totalRejection, d.rejectionPct,
-    d.toolChanges ? d.toolChanges.length : 0,
-    d.shiftNotes||"",
-    new Date().toLocaleString("en-IN")]);
+  if (d.type === 'CPC_SHIFT_LOG') {
+    raw.appendRow([
+      d.id, d.date, d.site, d.siteName, d.shift,
+      d.supervisor, d.totalProduction, d.totalRejection,
+      d.rejectionPct,
+      JSON.stringify(d.machineData||{}),
+      JSON.stringify(d.compSummary||{}),
+      JSON.stringify(d.toolChanges||[]),
+      d.shiftNotes||'',
+      new Date().toLocaleString('en-IN')
+    ]);
+    logShiftSummary(ss, d);
+    logMachineDetail(ss, d);
+  }
+  if (d.type === 'TOOL_CHANGE') {
+    logToolChange(ss, d);
+  }
 
-  // Sheet 2: Machine Detail
-  var ms = ss.getSheetByName("CPC_Machine_Detail")
-    || ss.insertSheet("CPC_Machine_Detail");
-  if (ms.getLastRow()===0) {
-    ms.appendRow(["Date","Site","Shift","Supervisor",
-      "Machine","Component","Production",
-      "Rejection","Rejection %","Remarks"]);
-    ms.getRange(1,1,1,10).setFontWeight("bold")
-      .setBackground("#1c2936").setFontColor("#ffffff");
-    ms.setFrozenRows(1);
+  return ContentService
+    .createTextOutput(JSON.stringify({status:'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function logShiftSummary(ss, d) {
+  var sh = ss.getSheetByName('CPC_Shift_Log')
+    || ss.insertSheet('CPC_Shift_Log');
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(['Date','Site','Shift','Supervisor',
+      'Total Production','Total Rejection',
+      'Rejection %','Tool Changes','Shift Notes','Logged At']);
+    formatHeader(sh, 10);
+  }
+  sh.appendRow([d.date, d.siteName, d.shift, d.supervisor,
+    d.totalProduction, d.totalRejection, d.rejectionPct,
+    d.toolChanges ? d.toolChanges.length : 0,
+    d.shiftNotes||'', new Date().toLocaleString('en-IN')]);
+}
+
+function logMachineDetail(ss, d) {
+  var ms = ss.getSheetByName('CPC_Machine_Detail')
+    || ss.insertSheet('CPC_Machine_Detail');
+  if (ms.getLastRow() === 0) {
+    ms.appendRow(['Date','Site','Shift','Supervisor',
+      'Machine','Component','Production',
+      'Rejection','Rejection %','Remarks']);
+    formatHeader(ms, 10);
   }
   var md = d.machineData || {};
   Object.keys(md).forEach(function(mc) {
     var m = md[mc];
     if (!m.production) return;
-    var pct = m.production>0
+    var pct = m.production > 0
       ? ((m.rejection||0)/m.production*100).toFixed(2) : 0;
-    ms.appendRow([d.date, d.siteName, d.shift,
-      d.supervisor, mc, m.component||"",
-      m.production, m.rejection||0, pct,
-      m.remarks||""]);
+    ms.appendRow([d.date, d.siteName, d.shift, d.supervisor,
+      mc, m.component||'', m.production, m.rejection||0,
+      pct, m.remarks||'']);
   });
+}
 
-  // Sheet 3: Tool Changes
-  var ts = ss.getSheetByName("CPC_Tool_Changes")
-    || ss.insertSheet("CPC_Tool_Changes");
-  if (ts.getLastRow()===0) {
-    ts.appendRow(["Date","Site","Shift","Supervisor",
-      "Machine","Tool Name","Operation",
-      "Life Achieved (pcs)","Change Reason",
-      "New Tool Fitted","Remarks"]);
-    ts.getRange(1,1,1,11).setFontWeight("bold")
-      .setBackground("#1c2936").setFontColor("#ffffff");
-    ts.setFrozenRows(1);
+function logToolChange(ss, d) {
+  var ts = ss.getSheetByName('CPC_Tool_Changes')
+    || ss.insertSheet('CPC_Tool_Changes');
+  if (ts.getLastRow() === 0) {
+    ts.appendRow(['Date','Site','Shift','Supervisor',
+      'Component','Machine','SAP Code','Tool Name',
+      'Operation','Make','Standard Life (pcs)',
+      'Life Achieved (pcs)','% of Standard',
+      'Change Reason','New Tool Fitted','Remarks','Logged At']);
+    formatHeader(ts, 17);
+  }
+  if (d.toolCode) {
+    var pct = d.stdLife > 0
+      ? Math.round(d.lifeAchieved/d.stdLife*100) : '';
+    ts.appendRow([d.date, d.siteName, d.shift, d.supervisor,
+      d.comp, d.machine, d.toolCode, d.toolName,
+      d.operation, d.make, d.stdLife||'', d.lifeAchieved||'',
+      pct, d.changeReason, d.newToolFitted||'',
+      d.remarks||'', new Date().toLocaleString('en-IN')]);
+    return;
   }
   (d.toolChanges||[]).forEach(function(tc) {
-    ts.appendRow([d.date, d.siteName, d.shift,
-      d.supervisor, tc.machine, tc.toolName||"",
-      tc.operation||"", tc.lifeAchieved||"",
-      tc.changeReason||"", tc.newToolFitted||"",
-      tc.remarks||""]);
+    var pct = tc.stdLife > 0
+      ? Math.round(tc.lifeAchieved/tc.stdLife*100) : '';
+    ts.appendRow([d.date, d.siteName, d.shift, d.supervisor,
+      tc.comp||'', tc.machine, tc.toolCode||'', tc.toolName||'',
+      tc.operation||'', tc.make||'', tc.stdLife||'',
+      tc.lifeAchieved||'', pct, tc.changeReason,
+      tc.newToolFitted||'', tc.remarks||'',
+      new Date().toLocaleString('en-IN')]);
   });
+}
 
-  return ContentService
-    .createTextOutput(JSON.stringify({status:"ok"}))
-    .setMimeType(ContentService.MimeType.JSON);
+function formatHeader(sheet, cols) {
+  sheet.getRange(1,1,1,cols).setFontWeight('bold')
+    .setBackground('#1c2936').setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
 }</div>
       <button onclick="copyCPCScript()" style="width:100%;margin-top:7px;padding:8px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📋 Copy Script</button>
       <div style="margin-top:10px;padding:9px 11px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--r);font-size:11px;color:#6ee7b7;line-height:1.6">
@@ -1330,7 +1403,7 @@ function newLog(){
 }
 
 // ═══════════════════════════════════════════
-// DASHBOARD
+// DASHBOARD — reads from Google Sheets if connected
 // ═══════════════════════════════════════════
 function setDashSite(site,btn){
   dashSite=site;
@@ -1345,16 +1418,55 @@ function changeDate(delta){
   renderDashboard();
 }
 
-function renderDashboard(){
-  const dayLogs=logs.filter(l=>l.date===dashDate&&l.site===dashSite);
+async function renderDashboard(){
+  // Show loading state
+  document.getElementById('dashKPIs').innerHTML=`
+    <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--fog);font-size:12px">
+      🔄 Loading data...
+    </div>`;
+
+  // Try to fetch from Google Sheets if connected
+  if(cpcSettings.sheetsUrl){
+    try{
+      await renderDashboardFromSheets();
+      return;
+    }catch(e){
+      console.log('Sheets fetch failed, falling back to local',e);
+    }
+  }
+  // Fallback to local data
+  renderDashboardLocal(logs);
+}
+
+async function renderDashboardFromSheets(){
+  // Fetch all logs from Google Sheets via read endpoint
+  const readUrl = cpcSettings.sheetsUrl.replace('/exec','/exec?action=read&date='+dashDate+'&site='+dashSite);
+  const resp = await fetch(readUrl,{method:'GET',mode:'cors'});
+  const data = await resp.json();
+  if(data && data.logs){
+    renderDashboardLocal(data.logs);
+  } else {
+    // Fallback to local
+    renderDashboardLocal(logs);
+  }
+}
+
+function renderDashboardLocal(allLogs){
+  const dayLogs=allLogs.filter(l=>l.date===dashDate&&l.site===dashSite);
   const dateLabel=new Date(dashDate).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('dashDateLabel').textContent=dashDate===new Date().toISOString().split('T')[0]?'Today — '+dateLabel:dateLabel;
 
-  const totalProd=dayLogs.reduce((s,l)=>s+l.totalProduction,0);
-  const totalRej =dayLogs.reduce((s,l)=>s+l.totalRejection,0);
+  const totalProd=dayLogs.reduce((s,l)=>s+(l.totalProduction||0),0);
+  const totalRej =dayLogs.reduce((s,l)=>s+(l.totalRejection||0),0);
   const rejPct   =totalProd>0?((totalRej/totalProd)*100).toFixed(1):0;
-  const totalTC  =dayLogs.reduce((s,l)=>s+l.toolChanges.length,0);
+  const totalTC  =dayLogs.reduce((s,l)=>s+(l.toolChanges?.length||0),0);
   const shifts   =dayLogs.map(l=>l.shift);
+
+  // Data source indicator
+  const sourceNote = cpcSettings.sheetsUrl
+    ? `<div style="font-size:10px;color:var(--green);text-align:right;margin-bottom:8px">✅ Live data from all devices</div>`
+    : `<div style="font-size:10px;color:var(--amber);text-align:right;margin-bottom:8px">⚠️ Showing this device only — connect Google Sheets for all devices</div>`;
+  document.getElementById('dashKPIs').insertAdjacentHTML('beforebegin', sourceNote);
 
   // KPIs
   document.getElementById('dashKPIs').innerHTML=`
@@ -1366,12 +1478,18 @@ function renderDashboard(){
   // Shift breakdown
   const shiftColors={A:'#f59e0b',B:'#8b5cf6',C:'#3b82f6'};
   const sb=document.getElementById('shiftBreakdown');
-  if(!dayLogs.length){sb.innerHTML='<div class="empty"><div class="empty-icon">📊</div><p>No shift logs for this date.</p></div>';return;}
+  if(!dayLogs.length){
+    sb.innerHTML=`<div class="empty"><div class="empty-icon">📊</div><p>No shift logs for this date.<br/>${cpcSettings.sheetsUrl?'':'Connect Google Sheets to see data from all supervisor phones.'}</p></div>`;
+    document.getElementById('compTable').innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--fog);padding:14px">No data</td></tr>';
+    document.getElementById('machineTable').innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--fog);padding:14px">No data</td></tr>';
+    return;
+  }
+
   sb.innerHTML=dayLogs.sort((a,b)=>['A','B','C'].indexOf(a.shift)-['A','B','C'].indexOf(b.shift)).map(l=>{
     const pct=l.totalProduction>0?((l.totalRejection/l.totalProduction)*100).toFixed(1):0;
     return`<div class="shift-row">
       <div class="shift-dot" style="background:${shiftColors[l.shift]}"></div>
-      <div class="shift-info"><div class="shift-name">${l.shift} Shift · ${l.supervisor}</div><div class="shift-meta">Rej: ${l.totalRejection} pcs (${pct}%) · ${l.toolChanges.length} tool change(s)</div></div>
+      <div class="shift-info"><div class="shift-name">${l.shift} Shift · ${l.supervisor}</div><div class="shift-meta">Rej: ${l.totalRejection} pcs (${pct}%) · ${l.toolChanges?.length||0} tool change(s)</div></div>
       <div><div class="shift-prod">${l.totalProduction}</div><div class="shift-rej">pcs</div></div>
     </div>`;}).join('');
 
@@ -1379,7 +1497,8 @@ function renderDashboard(){
   const compTotals={};
   dayLogs.forEach(l=>{Object.entries(l.compSummary||{}).forEach(([comp,data])=>{
     if(!compTotals[comp])compTotals[comp]={production:0,rejection:0};
-    compTotals[comp].production+=data.production;compTotals[comp].rejection+=data.rejection;
+    compTotals[comp].production+=data.production||0;
+    compTotals[comp].rejection+=data.rejection||0;
   });});
   const ct=document.getElementById('compTable');
   ct.innerHTML=`<thead><tr><th>Component</th><th>Production</th><th>Rejection</th><th>Rej %</th></tr></thead><tbody>`+
@@ -1391,13 +1510,13 @@ function renderDashboard(){
     }).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--fog);padding:14px">No data</td></tr>')+
     '</tbody>';
 
-  // Machine table
+  // Machine table — sorted by rejection highest first
   const machineTotals={};
   dayLogs.forEach(l=>{Object.entries(l.machineData||{}).forEach(([mc,data])=>{
     if(!data.production) return;
-    if(!machineTotals[mc])machineTotals[mc]={production:0,rejection:0,component:data.component||'—',shifts:[]};
-    machineTotals[mc].production+=data.production;machineTotals[mc].rejection+=data.rejection||0;
-    machineTotals[mc].shifts.push(l.shift);
+    if(!machineTotals[mc])machineTotals[mc]={production:0,rejection:0,component:data.component||'—'};
+    machineTotals[mc].production+=data.production;
+    machineTotals[mc].rejection+=data.rejection||0;
   });});
   const mt=document.getElementById('machineTable');
   mt.innerHTML=`<thead><tr><th>Machine</th><th>Component</th><th>Production</th><th>Rejection</th><th>Rej %</th></tr></thead><tbody>`+
@@ -1408,7 +1527,7 @@ function renderDashboard(){
     }).map(([mc,data])=>{
       const pct=data.production>0?((data.rejection/data.production)*100).toFixed(1):0;
       const cls=pct>=3?'rej-bad':pct>=1?'rej-warn':'rej-ok';
-      const highRej=pct>=3;
+      const highRej=parseFloat(pct)>=3;
       return`<tr${highRej?' class="high-rej"':''}><td>M/C ${mc}</td><td>${data.component}</td><td>${data.production}</td><td>${data.rejection}</td><td><span class="rej-badge ${cls}">${pct}%${highRej?' ⚠️':''}</span></td></tr>`;
     }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--fog);padding:14px">No machine data</td></tr>')+
     '</tbody>';
@@ -1417,34 +1536,47 @@ function renderDashboard(){
 // ═══════════════════════════════════════════
 // MORNING SUMMARY
 // ═══════════════════════════════════════════
-function generateMorningSummary(){
+async function generateMorningSummary(){
   const date=document.getElementById('summaryDate').value;
+  let allLogs = logs; // default to local
+
+  // Try to get all device data from Google Sheets
+  if(cpcSettings.sheetsUrl){
+    try{
+      const readUrl = cpcSettings.sheetsUrl.replace('/exec','/exec?action=read&date='+date);
+      const resp = await fetch(readUrl,{method:'GET',mode:'cors'});
+      const data = await resp.json();
+      if(data && data.logs && data.logs.length > 0){
+        allLogs = data.logs;
+      }
+    }catch(e){ /* use local */ }
+  }
+
   const dateLabel=new Date(date).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  const allSiteLogs={site1:logs.filter(l=>l.date===date&&l.site==='site1'),site2:logs.filter(l=>l.date===date&&l.site==='site2')};
+  const dataSource = cpcSettings.sheetsUrl ? '(All devices — Google Sheets)' : '(This device only)';
+  const allSites2 = getSiteData();
+  let msg=`☀️ ATF CPC MORNING SUMMARY\n📅 ${dateLabel}\n${dataSource}\n━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
-  let msg=`☀️ ATF CPC MORNING SUMMARY\n📅 ${dateLabel}\n━━━━━━━━━━━━━━━━━━━━━━━\n`;
-
-  ['site1','site2'].forEach(site=>{
-    const siteLogs=allSiteLogs[site];
-    const siteName=SITE_DATA[site].name;
-    const totalProd=siteLogs.reduce((s,l)=>s+l.totalProduction,0);
-    const totalRej =siteLogs.reduce((s,l)=>s+l.totalRejection,0);
+  Object.entries(allSites2).forEach(([site,siteObj])=>{
+    const siteLogs=allLogs.filter(l=>l.date===date&&l.site===site);
+    const totalProd=siteLogs.reduce((s,l)=>s+(l.totalProduction||0),0);
+    const totalRej =siteLogs.reduce((s,l)=>s+(l.totalRejection||0),0);
     const rejPct   =totalProd>0?((totalRej/totalProd)*100).toFixed(1):0;
     const shifts   =siteLogs.map(l=>l.shift);
-    const totalTC  =siteLogs.reduce((s,l)=>s+l.toolChanges.length,0);
+    const totalTC  =siteLogs.reduce((s,l)=>s+(l.toolChanges?.length||0),0);
 
-    msg+=`🏭 ${siteName}\n`;
+    msg+=`🏭 ${siteObj.name}\n`;
     if(!siteLogs.length){msg+=`No data logged for this date.\n\n`;return;}
     msg+=`Shifts Logged : ${shifts.join(', ')||'None'}\n`;
     msg+=`Total Prod    : ${totalProd} pcs\n`;
     msg+=`Total Rej     : ${totalRej} pcs (${rejPct}%)\n`;
     msg+=`Tool Changes  : ${totalTC}\n`;
 
-    // Component wise
     const compTotals={};
     siteLogs.forEach(l=>{Object.entries(l.compSummary||{}).forEach(([comp,data])=>{
       if(!compTotals[comp])compTotals[comp]={production:0,rejection:0};
-      compTotals[comp].production+=data.production;compTotals[comp].rejection+=data.rejection;
+      compTotals[comp].production+=data.production||0;
+      compTotals[comp].rejection+=data.rejection||0;
     });});
     if(Object.keys(compTotals).length){
       msg+=`\nComponent-wise:\n`;
@@ -1455,11 +1587,11 @@ function generateMorningSummary(){
       });
     }
 
-    // High rejection alert
     const allMachineData={};
     siteLogs.forEach(l=>Object.entries(l.machineData||{}).forEach(([mc,data])=>{
       if(!allMachineData[mc])allMachineData[mc]={production:0,rejection:0,component:data.component};
-      allMachineData[mc].production+=data.production||0;allMachineData[mc].rejection+=data.rejection||0;
+      allMachineData[mc].production+=data.production||0;
+      allMachineData[mc].rejection+=data.rejection||0;
     }));
     const highRej=Object.entries(allMachineData).filter(([k,v])=>v.production>0&&(v.rejection/v.production)>=0.03);
     if(highRej.length){
@@ -1470,21 +1602,19 @@ function generateMorningSummary(){
       });
     }
 
-    // Tool changes
-    const allTC=siteLogs.flatMap(l=>l.toolChanges);
+    const allTC=siteLogs.flatMap(l=>l.toolChanges||[]);
     if(allTC.length){
       msg+=`\n🔧 TOOL CHANGES (${allTC.length}):\n`;
-      allTC.forEach((tc,i)=>{msg+=`${i+1}. M/C ${tc.machine} | ${tc.toolName} | Life: ${tc.lifeAchieved||'—'} pcs | ${tc.changeReason}\n`;});
+      allTC.forEach((tc,i)=>{msg+=`${i+1}. M/C ${tc.machine} | ${tc.toolName||tc.toolCode||'—'} | Life: ${tc.lifeAchieved||'—'} pcs | ${tc.changeReason}\n`;});
     }
     msg+=`\n`;
   });
 
-  // Missing shifts alert
-  const allSites2 = getSiteData();
+  // Missing shifts
   const missingShifts=[];
   Object.entries(allSites2).forEach(([site,siteObj])=>{
     ['A','B','C'].forEach(shift=>{
-      if(!logs.find(l=>l.date===date&&l.site===site&&l.shift===shift)){
+      if(!allLogs.find(l=>l.date===date&&l.site===site&&l.shift===shift)){
         missingShifts.push(`${siteObj.name} — ${shift} Shift`);
       }
     });
