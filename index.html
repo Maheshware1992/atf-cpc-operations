@@ -547,10 +547,18 @@ select option{background:var(--steel);color:var(--white)}
     </div>
     <!-- PIN PAD -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:220px;margin:0 auto 16px">
-      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`
-        <button onclick="pinPress('${k}')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:${k===''?'transparent':'var(--white)'};font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:${k===''?'default':'pointer'};transition:all .15s;${k===''?'pointer-events:none':''}" ${k===''?'disabled':''}>
-          ${k}
-        </button>`).join('')}
+      <button onclick="pinPress('1')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">1</button>
+      <button onclick="pinPress('2')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">2</button>
+      <button onclick="pinPress('3')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">3</button>
+      <button onclick="pinPress('4')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">4</button>
+      <button onclick="pinPress('5')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">5</button>
+      <button onclick="pinPress('6')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">6</button>
+      <button onclick="pinPress('7')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">7</button>
+      <button onclick="pinPress('8')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">8</button>
+      <button onclick="pinPress('9')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">9</button>
+      <button disabled style="padding:16px;background:transparent;border:1px solid transparent;border-radius:var(--r);color:transparent;font-size:22px;cursor:default"></button>
+      <button onclick="pinPress('0')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">0</button>
+      <button onclick="pinPress('⌫')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--amber);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer;transition:all .15s">⌫</button>
     </div>
     <div id="pinError" style="font-size:11px;color:var(--red);height:16px;margin-bottom:8px"></div>
     <div style="font-size:10px;color:var(--fog)">Default PIN: <strong style="color:var(--amber)">1234</strong> · Change in settings after unlocking</div>
