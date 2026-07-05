@@ -1934,10 +1934,7 @@ function sendMorningTeams(){
 // ═══════════════════════════════════════════
 // TOOL CODE MASTER
 // ═══════════════════════════════════════════
-function getToolCodes(){
-  const saved = localStorage.getItem('atf_tool_codes');
-  if(saved) return JSON.parse(saved);
-  // DEFAULT — hardcoded from SAP Code Projectwise sheet
+function getDefaultToolCodes(){
   return {
     'A897 Shaft':[
       {code:'CU16AF01118S',name:'DCGT11T304N-JS AH725',operation:'Turning',make:'Tungloy',stdLife:1500},
@@ -2098,8 +2095,26 @@ function getToolCodes(){
     ],
   };
 }
-function saveToolCodes(data){
-  localStorage.setItem('atf_tool_codes', JSON.stringify(data));
+
+function getToolCodes(){
+  // Always start with defaults — merge with any user additions from localStorage
+  const defaults = getDefaultToolCodes();
+  const saved = localStorage.getItem('atf_tool_codes');
+  if(!saved) return defaults;
+  try {
+    const userAdded = JSON.parse(saved);
+    // Merge: for each component, combine defaults + user-added (no duplicates by code)
+    const merged = {...defaults};
+    Object.entries(userAdded).forEach(([comp, tools])=>{
+      if(!merged[comp]) merged[comp] = [];
+      tools.forEach(t=>{
+        if(!merged[comp].find(d=>d.code===t.code)){
+          merged[comp].push(t);
+        }
+      });
+    });
+    return merged;
+  } catch(e){ return defaults; }
 }
 
 function addToolCode(){
