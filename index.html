@@ -1162,13 +1162,12 @@ function formatHeader(sheet, cols) {
       </div>
     </div>
   </div>
-
   <!-- TOOL PRICE MANAGEMENT -->
   <div class="card">
     <div class="card-hdr"><span class="ch-icon">💰</span><span class="ch-title">TOOL PRICES</span><span class="ch-tag">Add / Edit anytime</span></div>
     <div class="card-body">
       <div style="font-size:11px;color:var(--fog);margin-bottom:12px;line-height:1.6">
-        66 tools have prices from SAP master. 58 tools have no price yet — shown in red. Add/edit prices anytime — used for DC Inward cost calculation.
+        66 tools have prices from SAP master. 58 tools have no price yet — shown in red. Add/edit prices anytime — auto-fills in DC Inward.
       </div>
       <div style="display:flex;gap:7px;margin-bottom:10px">
         <button onclick="setPriceFilter('all')" id="pf-all" style="flex:1;padding:7px;border-radius:var(--r);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--amber);background:rgba(245,158,11,.1);color:var(--amber)">All</button>
@@ -1186,7 +1185,7 @@ function formatHeader(sheet, cols) {
         </select>
       </div>
       <div id="priceList" style="max-height:400px;overflow-y:auto;margin-bottom:8px"></div>
-      <div style="font-size:10px;color:var(--fog);text-align:center">Tap any price field to edit · Saves immediately on change</div>
+      <div style="font-size:10px;color:var(--fog);text-align:center">Tap any price field to edit · Saves immediately</div>
     </div>
   </div>
 
@@ -2814,6 +2813,20 @@ function getToolPrice(code){
     'RE01AD09502F':120,
     'RE01AC30802F':969,
     'CU02AA07101D':1709,'RE03AB39702B':22000,
+    'CU01SC000267':17000,'RE01SC000267':790,
+    'CU01SC000237':9200,'RE01SC000237':525,
+    'CU01SC000236':4000,'RE01SC000236':308,
+    'CU01SC000239':4000,'RE01SC000239':308,
+    'CU01SC000047':6800,'RE01SC000047':528,
+    'CU01SC000238':4130,'RE01SC000238':299,
+    'CU01SC000048':3600,'RE01SC000048':180,
+    'CU01SC000050':4500,'RE01SC000050':420,
+    'CU01SC000264':1500,'ER01SC000264':180,
+    'CU04INSC0081':721,'A2024092502':660,
+    'CU04INSC0082':624,'CU04IN000016':1105,
+    'CU04IN000014':400,'CU04INSC0083':2360,
+    'A2024041603.12':4500,'A2024041603.3':4400,
+    // B493 — all 26 tools priced from SAP master
     'CU01SC000267':17000,'RE01SC000267':790,
     'CU01SC000237':9200,'RE01SC000237':525,
     'CU01SC000236':4000,'RE01SC000236':308,
