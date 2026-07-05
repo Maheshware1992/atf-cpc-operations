@@ -224,6 +224,9 @@ select option{background:var(--steel);color:var(--white)}
   <button class="tab"        onclick="switchTab('dashboard')" id="tab-dashboard">📊 Dashboard</button>
   <button class="tab"        onclick="switchTab('toolchange')" id="tab-toolchange">🔧 Tool Change</button>
   <button class="tab"        onclick="switchTab('morning')"   id="tab-morning">☀️ Morning</button>
+  <button class="tab"        onclick="switchTab('dcinward')"  id="tab-dcinward">📦 DC In</button>
+  <button class="tab"        onclick="switchTab('outward')"   id="tab-outward">🔄 Outward</button>
+  <button class="tab"        onclick="switchTab('recon')"     id="tab-recon">♻️ Recon</button>
   <button class="tab"        onclick="switchTab('settings')"  id="tab-settings">⚙️</button>
 </div>
 
@@ -533,6 +536,215 @@ select option{background:var(--steel);color:var(--white)}
   </div>
 
 </div><!-- /pane-toolchange -->
+
+<!-- ════ DC INWARD ════ -->
+<div id="pane-dcinward" class="pane">
+
+  <!-- DC Entry Form -->
+  <div class="card" style="border:2px solid rgba(16,185,129,.25)">
+    <div class="card-hdr" style="background:rgba(16,185,129,.1)">
+      <span class="ch-icon">📦</span>
+      <span class="ch-title" style="color:var(--green)">LOG DC INWARD</span>
+      <span class="ch-tag" style="background:rgba(16,185,129,.15);color:var(--green)">Office Staff</span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;padding:8px 10px;background:rgba(16,185,129,.06);border-radius:var(--r);border:1px solid rgba(16,185,129,.15);line-height:1.6">
+        📋 Log every Delivery Challan after tools are delivered to site. Add one line per tool code on the DC.
+      </div>
+      <div class="frow">
+        <div class="fg"><label>DC Number (from Tally) <span class="req">*</span></label><input id="dc-no" placeholder="e.g. DC-2627-0045"/></div>
+        <div class="fg"><label>DC Date <span class="req">*</span></label><input type="date" id="dc-date"/></div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label>CPC Site <span class="req">*</span></label>
+          <select id="dc-site">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Received By (Supervisor) <span class="req">*</span></label>
+          <select id="dc-supervisor">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- DC Line Items -->
+      <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 7px">Tool Line Items</div>
+      <div id="dc-items-container"></div>
+      <button onclick="addDCItem()" style="width:100%;padding:8px;background:none;border:1.5px dashed rgba(16,185,129,.35);border-radius:var(--r);color:var(--green);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px;transition:all .2s">➕ Add Tool Line Item</button>
+
+      <!-- DC Total -->
+      <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px 13px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Total DC Value</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--green)" id="dc-total">₹ 0.00</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--fog)">Line items</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--white)" id="dc-item-count">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-bottom:10px">
+        <label>Remarks</label>
+        <input id="dc-remarks" placeholder="e.g. Urgent delivery for B487 trial, partial DC remaining"/>
+      </div>
+
+      <button onclick="submitDCInward()" style="width:100%;padding:13px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px">
+        📦 LOG DC INWARD
+      </button>
+    </div>
+  </div>
+
+  <!-- DC History -->
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--fog);margin:4px 0 8px;display:flex;align-items:center;gap:7px">
+    Recent DC Inwards
+    <span style="flex:1;height:1px;background:var(--iron)"></span>
+  </div>
+  <div id="dc-history-list"></div>
+
+</div><!-- /pane-dcinward -->
+
+
+<!-- ════ TOOL OUTWARD ════ -->
+<div id="pane-outward" class="pane">
+
+  <div class="card" style="border:2px solid rgba(251,146,60,.25)">
+    <div class="card-hdr" style="background:rgba(251,146,60,.1)">
+      <span class="ch-icon">🔄</span>
+      <span class="ch-title" style="color:var(--spark)">LOG TOOL OUTWARD</span>
+      <span class="ch-tag" style="background:rgba(251,146,60,.15);color:var(--spark)">Supervisor</span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;padding:8px 10px;background:rgba(251,146,60,.06);border-radius:var(--r);border:1px solid rgba(251,146,60,.15);line-height:1.6">
+        📤 Log every time tools leave the site — worn, broken, or sent for reconditioning back to ATF office.
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="out-date"/></div>
+        <div class="fg">
+          <label>Site <span class="req">*</span></label>
+          <select id="out-site"><option value="">— Select —</option></select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label>Supervisor <span class="req">*</span></label>
+          <select id="out-supervisor"><option value="">— Select —</option></select>
+        </div>
+        <div class="fg">
+          <label>Outward Reason <span class="req">*</span></label>
+          <select id="out-reason">
+            <option value="">— Select —</option>
+            <option value="reconditioning">🔧 For Reconditioning</option>
+            <option value="worn">⚠️ Worn Out — Scrap</option>
+            <option value="broken">❌ Broken — Scrap</option>
+            <option value="return">↩️ Return to Office</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Outward line items -->
+      <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 7px">Tools Going Out</div>
+      <div id="out-items-container"></div>
+      <button onclick="addOutItem()" style="width:100%;padding:8px;background:none;border:1.5px dashed rgba(251,146,60,.35);border-radius:var(--r);color:var(--spark);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px;transition:all .2s">➕ Add Tool</button>
+
+      <div class="fg" style="margin-bottom:10px">
+        <label>Remarks</label>
+        <input id="out-remarks" placeholder="e.g. 3 drills broken during B493 — high breakage this week"/>
+      </div>
+
+      <button onclick="submitOutward()" style="width:100%;padding:13px;background:linear-gradient(135deg,#c2410c,#f97316);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer">
+        🔄 LOG TOOL OUTWARD
+      </button>
+    </div>
+  </div>
+
+  <!-- Outward history -->
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--fog);margin:4px 0 8px;display:flex;align-items:center;gap:7px">
+    Recent Outward Entries
+    <span style="flex:1;height:1px;background:var(--iron)"></span>
+  </div>
+  <div id="out-history-list"></div>
+
+</div><!-- /pane-outward -->
+
+
+<!-- ════ RECONDITIONING ════ -->
+<div id="pane-recon" class="pane">
+
+  <div class="card" style="border:2px solid rgba(139,92,246,.25)">
+    <div class="card-hdr" style="background:rgba(139,92,246,.1)">
+      <span class="ch-icon">♻️</span>
+      <span class="ch-title" style="color:#c4b5fd">LOG RECONDITIONING</span>
+      <span class="ch-tag" style="background:rgba(139,92,246,.15);color:#c4b5fd">Office Staff</span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;padding:8px 10px;background:rgba(139,92,246,.06);border-radius:var(--r);border:1px solid rgba(139,92,246,.15);line-height:1.6">
+        ♻️ Log tools sent to vendor for reconditioning. Update when tools are returned with reconditioning cost.
+      </div>
+
+      <!-- Two sub-sections: Send and Receive -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button onclick="setReconMode('send')" id="recon-send-btn" style="flex:1;padding:9px;border-radius:var(--r);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--violet);background:rgba(139,92,246,.15);color:#c4b5fd;transition:all .2s">📤 Send to Vendor</button>
+        <button onclick="setReconMode('receive')" id="recon-receive-btn" style="flex:1;padding:9px;border-radius:var(--r);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--slate);background:var(--iron);color:var(--fog);transition:all .2s">📥 Receive from Vendor</button>
+      </div>
+
+      <!-- SEND form -->
+      <div id="recon-send-form">
+        <div class="frow">
+          <div class="fg"><label>Date Sent <span class="req">*</span></label><input type="date" id="recon-send-date"/></div>
+          <div class="fg"><label>Vendor Name <span class="req">*</span></label><input id="recon-vendor" placeholder="e.g. Precision Tools, Pune"/></div>
+        </div>
+        <div class="frow">
+          <div class="fg">
+            <label>Site <span class="req">*</span></label>
+            <select id="recon-site"><option value="">— Select —</option></select>
+          </div>
+          <div class="fg"><label>Expected Return Date</label><input type="date" id="recon-expected"/></div>
+        </div>
+        <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 7px">Tools Sent for Reconditioning</div>
+        <div id="recon-send-items"></div>
+        <button onclick="addReconSendItem()" style="width:100%;padding:8px;background:none;border:1.5px dashed rgba(139,92,246,.35);border-radius:var(--r);color:#c4b5fd;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px">➕ Add Tool</button>
+        <div class="fg" style="margin-bottom:10px"><label>Remarks</label><input id="recon-send-remarks" placeholder="e.g. All PCD reamers from B128 batch — 2nd reconditioning"/></div>
+        <button onclick="submitReconSend()" style="width:100%;padding:13px;background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer">♻️ LOG — SENT TO VENDOR</button>
+      </div>
+
+      <!-- RECEIVE form -->
+      <div id="recon-receive-form" style="display:none">
+        <div style="font-size:11px;color:var(--fog);margin-bottom:10px;line-height:1.6">Select the original send entry and update with return date and cost.</div>
+        <div class="fg" style="margin-bottom:9px">
+          <label>Select Send Entry to Update <span class="req">*</span></label>
+          <select id="recon-send-ref"><option value="">— Select pending reconditioning —</option></select>
+        </div>
+        <div id="recon-send-ref-details" style="display:none;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:11px;color:#c4b5fd;line-height:1.8"></div>
+        <div class="frow">
+          <div class="fg"><label>Date Received <span class="req">*</span></label><input type="date" id="recon-recv-date"/></div>
+          <div class="fg"><label>Reconditioning Cost (₹) <span class="req">*</span></label><input type="number" id="recon-cost" placeholder="Total cost paid to vendor" min="0"/></div>
+        </div>
+        <div id="recon-savings-display" style="display:none;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
+          <div style="font-size:10px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Savings vs Buying New</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--green)" id="recon-savings-val">₹ 0</div>
+          <div style="font-size:10px;color:var(--fog);margin-top:2px" id="recon-savings-note"></div>
+        </div>
+        <div class="fg" style="margin-bottom:10px"><label>Remarks</label><input id="recon-recv-remarks" placeholder="e.g. Quality good — tools ready to use. Life expected 80% of new."/></div>
+        <button onclick="submitReconReceive()" style="width:100%;padding:13px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer">📥 LOG — RECEIVED FROM VENDOR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reconditioning history -->
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--fog);margin:4px 0 8px;display:flex;align-items:center;gap:7px">
+    Reconditioning Register
+    <span style="flex:1;height:1px;background:var(--iron)"></span>
+  </div>
+  <div id="recon-history-list"></div>
+
+</div><!-- /pane-recon -->
+
 
 <!-- ════ SETTINGS ════ -->
 <div id="pane-settings" class="pane">
@@ -948,6 +1160,33 @@ function formatHeader(sheet, cols) {
         <button onclick="exportCPCCSV()" style="flex:1;padding:10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">📥 Export CSV</button>
         <button onclick="clearCPCData()" style="flex:1;padding:10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r);color:var(--red);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🗑️ Clear Data</button>
       </div>
+    </div>
+  </div>
+
+  <!-- TOOL PRICE MANAGEMENT -->
+  <div class="card">
+    <div class="card-hdr"><span class="ch-icon">💰</span><span class="ch-title">TOOL PRICES</span><span class="ch-tag">Add / Edit anytime</span></div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;line-height:1.6">
+        66 tools have prices from SAP master. 58 tools have no price yet — shown in red. Add/edit prices anytime — used for DC Inward cost calculation.
+      </div>
+      <div style="display:flex;gap:7px;margin-bottom:10px">
+        <button onclick="setPriceFilter('all')" id="pf-all" style="flex:1;padding:7px;border-radius:var(--r);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--amber);background:rgba(245,158,11,.1);color:var(--amber)">All</button>
+        <button onclick="setPriceFilter('missing')" id="pf-missing" style="flex:1;padding:7px;border-radius:var(--r);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--slate);background:var(--iron);color:var(--fog)">No Price</button>
+        <button onclick="setPriceFilter('has')" id="pf-has" style="flex:1;padding:7px;border-radius:var(--r);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--slate);background:var(--iron);color:var(--fog)">Has Price</button>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Filter by Component</label>
+        <select id="priceCompFilter" onchange="renderPriceList()" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);-webkit-appearance:none">
+          <option value="">All Components</option>
+          <option>A897 Shaft</option><option>B128</option>
+          <option>A506 Body</option><option>A506 Cover</option>
+          <option>A897 Body</option><option>A944</option>
+          <option>B493</option><option>B487</option>
+        </select>
+      </div>
+      <div id="priceList" style="max-height:400px;overflow-y:auto;margin-bottom:8px"></div>
+      <div style="font-size:10px;color:var(--fog);text-align:center">Tap any price field to edit · Saves immediately on change</div>
     </div>
   </div>
 
@@ -2312,13 +2551,16 @@ function changeSupPin(){
 }
 
 function switchTab(t){
-  ['log','dashboard','toolchange','morning','settings'].forEach(p=>{
+  ['log','dashboard','toolchange','morning','dcinward','outward','recon','settings'].forEach(p=>{
     document.getElementById('pane-'+p).classList.toggle('active',p===t);
     document.getElementById('tab-'+p).classList.toggle('active',p===t);
   });
   if(t!=='settings'){lockSettings();}
   if(t==='dashboard')  renderDashboard();
   if(t==='toolchange') initToolChangeTab();
+  if(t==='dcinward')   initDCInward();
+  if(t==='outward')    initOutward();
+  if(t==='recon')      initRecon();
   if(t==='settings'){
     document.getElementById('settingsLock').style.display='block';
     document.getElementById('supervisorContent').style.display='none';
@@ -2331,6 +2573,7 @@ function renderSettings(){
   renderSupervisorList();
   renderSiteManagement();
   renderToolMasterList();
+  renderPriceList();
   document.getElementById('cpcLogCount').textContent = logs.length;
   if(cpcSettings.sheetsUrl) document.getElementById('cpcSheetsUrl').value=cpcSettings.sheetsUrl;
   if(cpcSettings.rejThreshold) document.getElementById('rejThreshold').value=cpcSettings.rejThreshold;
@@ -2533,8 +2776,612 @@ function clearCPCData(){
 }
 
 // ═══════════════════════════════════════════
-// UTILS
+// DC INWARD MODULE
 // ═══════════════════════════════════════════
+let dcLogs   = JSON.parse(localStorage.getItem('atf_dc_logs')  || '[]');
+let outLogs  = JSON.parse(localStorage.getItem('atf_out_logs') || '[]');
+let reconLogs= JSON.parse(localStorage.getItem('atf_recon_logs')|| '[]');
+let dcItems  = [];
+let outItems = [];
+let reconSendItems = [];
+let dcItemCount = 0;
+let reconMode = 'send';
+
+function getToolPrice(code){
+  const saved = JSON.parse(localStorage.getItem('atf_tool_prices')||'{}');
+  if(saved[code] !== undefined) return saved[code];
+  // DEFAULT PRICES — from SAP master sheet (58 tools pending — add via Settings)
+  const defaults = {
+    'CU16AF01118S':584,'CU04IN000050':693,'CU04IN000051':530,
+    'CU01SC000257':167,'CU01SC000258':1900,'RE01SC000258':200,
+    'CU01SC000259':1900,'RE01SC000259':200,
+    'CU01AC29902F':3006,'RE01AC29902F':404,
+    'CU02AA01001D':556,
+    'CU01AC30002F':1800,'RE01AC30002F':283,
+    'RE04AA34402F':387,'RE01AC30102F':220,'RE01AF00913B':180,
+    'CU03AB37002B':10500,'RE03AB37002B':8000,
+    'CU03AB37202B':11500,'RE03AB37202B':8250,
+    'CU01AD09602F':3000,'RE01AD09602F':315,
+    'CU03AB37402B':20025,'RE03AB37402B':12450,
+    'CU03AB37302B':23355,'RE03AB37302B':18500,
+    'CU03AB37102B':18765,'RE03AB37102B':12500,
+    'RE03AB36902B':18500,
+    'RE01AG06102F':258,'RE01AG06202F':387,
+    'CU01AD07602F':6500,'RE01AD07602F':214,
+    'CU16BB02617S':1450,
+    'CU01AD08102F':1760,
+    'RE03AB22602B':8250,
+    'RE01AD09502F':120,
+    'RE01AC30802F':969,
+    'CU02AA07101D':1709,'RE03AB39702B':22000,
+    'CU01SC000267':17000,'RE01SC000267':790,
+    'CU01SC000237':9200,'RE01SC000237':525,
+    'CU01SC000236':4000,'RE01SC000236':308,
+    'CU01SC000239':4000,'RE01SC000239':308,
+    'CU01SC000047':6800,'RE01SC000047':528,
+    'CU01SC000238':4130,'RE01SC000238':299,
+    'CU01SC000048':3600,'RE01SC000048':180,
+    'CU01SC000050':4500,'RE01SC000050':420,
+    'CU01SC000264':1500,'ER01SC000264':180,
+    'CU04INSC0081':721,'A2024092502':660,
+    'CU04INSC0082':624,'CU04IN000016':1105,
+    'CU04IN000014':400,'CU04INSC0083':2360,
+    'A2024041603.12':4500,'A2024041603.3':4400,
+    // B487
+    'CU04IN000004':0,'CU01SC000017':0,'CU01SC000018':0,
+  };
+  return defaults[code] !== undefined ? defaults[code] : 0;
+}
+
+function initDCInward(){
+  document.getElementById('dc-date').value = new Date().toISOString().split('T')[0];
+  populateDCDropdowns();
+  if(!dcItems.length) addDCItem();
+  renderDCHistory();
+}
+
+function populateDCDropdowns(){
+  const siteData = getSiteData();
+  const sups = getSupervisors();
+  ['dc-site','out-site','recon-site'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const cur = sel.value;
+    sel.innerHTML='<option value="">— Select —</option>';
+    Object.entries(siteData).forEach(([id2,site])=>{
+      const o=document.createElement('option');
+      o.value=id2;o.textContent=site.name;
+      if(id2===cur)o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+  ['dc-supervisor','out-supervisor'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    sel.innerHTML='<option value="">— Select —</option>';
+    sups.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
+  });
+}
+
+function addDCItem(){
+  dcItemCount++;
+  const id='dci'+dcItemCount;
+  dcItems.push({id,component:'',toolCode:'',qty:0,unitPrice:0});
+  renderDCItems();
+}
+
+function renderDCItems(){
+  const c=document.getElementById('dc-items-container');
+  const toolData=getToolCodes();
+  const allComps=Object.keys(toolData).filter(k=>toolData[k].length>0);
+
+  c.innerHTML=dcItems.map((item,i)=>{
+    const tools=toolData[item.component]||[];
+    const lineTotal=(item.qty||0)*(item.unitPrice||0);
+    return`<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px;margin-bottom:7px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <div style="width:20px;height:20px;background:var(--green);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
+        <span style="font-size:12px;font-weight:600;color:var(--green);flex:1">Line Item ${i+1}</span>
+        <button onclick="removeDCItem('${item.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Component</label>
+          <select onchange="onDCCompChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select —</option>
+            ${allComps.map(c=>`<option value="${c}"${item.component===c?' selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Tool Code</label>
+          <select onchange="onDCToolChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select component first —</option>
+            ${tools.map(t=>`<option value="${t.code}"${item.toolCode===t.code?' selected':''}>${t.code} — ${t.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Qty</label>
+          <input type="number" value="${item.qty||''}" min="0" placeholder="0" oninput="updateDCItem('${item.id}','qty',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white);width:100%"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Unit Price (₹)</label>
+          <input type="number" value="${item.unitPrice||''}" min="0" step="0.01" placeholder="0.00" oninput="updateDCItem('${item.id}','unitPrice',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white);width:100%"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Line Total</label>
+          <div style="padding:7px 9px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--green)">₹${lineTotal.toLocaleString('en-IN',{minimumFractionDigits:0})}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  calcDCTotal();
+}
+
+function onDCCompChange(id,comp){
+  const item=dcItems.find(i=>i.id===id);
+  if(item){item.component=comp;item.toolCode='';item.unitPrice=0;}
+  renderDCItems();
+}
+
+function onDCToolChange(id,code){
+  const item=dcItems.find(i=>i.id===id);
+  if(item){
+    item.toolCode=code;
+    item.unitPrice=getToolPrice(code)||0;
+  }
+  renderDCItems();
+}
+
+function updateDCItem(id,field,val){
+  const item=dcItems.find(i=>i.id===id);
+  if(item) item[field]=parseFloat(val)||0;
+  calcDCTotal();
+}
+
+function removeDCItem(id){
+  if(dcItems.length===1){showToast('At least one item required','err');return;}
+  dcItems=dcItems.filter(i=>i.id!==id);
+  renderDCItems();
+}
+
+function calcDCTotal(){
+  const total=dcItems.reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0),0);
+  const el=document.getElementById('dc-total');
+  const el2=document.getElementById('dc-item-count');
+  if(el) el.textContent='₹ '+total.toLocaleString('en-IN',{minimumFractionDigits:2});
+  if(el2) el2.textContent=dcItems.filter(i=>i.qty>0).length;
+}
+
+function submitDCInward(){
+  const dcNo  = document.getElementById('dc-no').value.trim();
+  const date  = document.getElementById('dc-date').value;
+  const site  = document.getElementById('dc-site').value;
+  const sup   = document.getElementById('dc-supervisor').value;
+  if(!dcNo){showToast('Enter DC number','err');return;}
+  if(!date){showToast('Select date','err');return;}
+  if(!site){showToast('Select site','err');return;}
+  if(!sup){showToast('Select supervisor','err');return;}
+  const validItems=dcItems.filter(i=>i.toolCode&&i.qty>0);
+  if(!validItems.length){showToast('Add at least one tool with qty','err');return;}
+
+  const siteData=getSiteData();
+  const total=validItems.reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0),0);
+  const entry={
+    id:'dc'+Date.now(),dcNo,date,
+    site,siteName:siteData[site]?.name||site,
+    supervisor:sup,
+    items:validItems.map(i=>({...i})),
+    totalValue:total,
+    remarks:document.getElementById('dc-remarks').value,
+    loggedAt:new Date().toISOString(),
+  };
+  dcLogs.unshift(entry);
+  localStorage.setItem('atf_dc_logs',JSON.stringify(dcLogs));
+
+  // Push to sheets
+  if(cpcSettings.sheetsUrl){
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'DC_INWARD'})});}catch(e){}
+  }
+
+  // Reset
+  dcItems=[];dcItemCount=0;
+  ['dc-no','dc-remarks'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('dc-site').value='';
+  document.getElementById('dc-supervisor').value='';
+  addDCItem();
+  renderDCHistory();
+  showToast('✅ DC '+dcNo+' logged — ₹'+total.toLocaleString('en-IN'),'ok');
+}
+
+function renderDCHistory(){
+  const c=document.getElementById('dc-history-list');
+  if(!dcLogs.length){c.innerHTML='<div class="empty"><div class="empty-icon">📦</div><p>No DC entries yet.</p></div>';return;}
+  c.innerHTML=dcLogs.slice(0,15).map(d=>`
+    <div style="background:var(--steel);border:1px solid var(--iron);border-left:3px solid var(--green);border-radius:var(--r2);padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--green)">${d.dcNo}</span>
+        <span style="font-size:10px;color:var(--fog)">· ${d.siteName} · ${d.date}</span>
+        <span style="margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--white)">₹${d.totalValue?.toLocaleString('en-IN')||0}</span>
+      </div>
+      <div style="font-size:11px;color:var(--fog)">Received by: ${d.supervisor} · ${d.items?.length||0} tool code(s)</div>
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+        ${(d.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(16,185,129,.1);color:var(--green)">${i.toolCode} × ${i.qty}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// TOOL OUTWARD MODULE
+// ═══════════════════════════════════════════
+function initOutward(){
+  document.getElementById('out-date').value=new Date().toISOString().split('T')[0];
+  populateDCDropdowns();
+  if(!outItems.length) addOutItem();
+  renderOutHistory();
+}
+
+function addOutItem(){
+  const id='out'+Date.now()+outItems.length;
+  outItems.push({id,component:'',toolCode:'',qty:0,condition:''});
+  renderOutItems();
+}
+
+function renderOutItems(){
+  const c=document.getElementById('out-items-container');
+  const toolData=getToolCodes();
+  const allComps=Object.keys(toolData).filter(k=>toolData[k].length>0);
+  c.innerHTML=outItems.map((item,i)=>{
+    const tools=toolData[item.component]||[];
+    return`<div style="background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.2);border-radius:var(--r);padding:10px;margin-bottom:7px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <div style="width:20px;height:20px;background:var(--spark);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
+        <span style="font-size:12px;font-weight:600;color:var(--spark);flex:1">Tool ${i+1}</span>
+        <button onclick="removeOutItem('${item.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Component</label>
+          <select onchange="onOutCompChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select —</option>
+            ${allComps.map(c=>`<option value="${c}"${item.component===c?' selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Tool Code</label>
+          <select onchange="updateOutItem('${item.id}','toolCode',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select —</option>
+            ${tools.map(t=>`<option value="${t.code}"${item.toolCode===t.code?' selected':''}>${t.code} — ${t.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Qty</label>
+          <input type="number" value="${item.qty||''}" min="0" placeholder="0" oninput="updateOutItem('${item.id}','qty',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white);width:100%"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Condition</label>
+          <select onchange="updateOutItem('${item.id}','condition',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">—</option>
+            <option value="recon">For Reconditioning</option>
+            <option value="worn">Worn — Scrap</option>
+            <option value="broken">Broken — Scrap</option>
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onOutCompChange(id,comp){const item=outItems.find(i=>i.id===id);if(item){item.component=comp;item.toolCode='';}renderOutItems();}
+function updateOutItem(id,field,val){const item=outItems.find(i=>i.id===id);if(item)item[field]=field==='qty'?(parseFloat(val)||0):val;}
+function removeOutItem(id){if(outItems.length===1){showToast('At least one item required','err');return;}outItems=outItems.filter(i=>i.id!==id);renderOutItems();}
+
+function submitOutward(){
+  const date=document.getElementById('out-date').value;
+  const site=document.getElementById('out-site').value;
+  const sup=document.getElementById('out-supervisor').value;
+  const reason=document.getElementById('out-reason').value;
+  if(!date||!site||!sup||!reason){showToast('Fill all required fields','err');return;}
+  const validItems=outItems.filter(i=>i.toolCode&&i.qty>0);
+  if(!validItems.length){showToast('Add at least one tool with qty','err');return;}
+  const siteData=getSiteData();
+  const entry={
+    id:'out'+Date.now(),date,
+    site,siteName:siteData[site]?.name||site,
+    supervisor:sup,reason,
+    items:validItems.map(i=>({...i})),
+    remarks:document.getElementById('out-remarks').value,
+    loggedAt:new Date().toISOString(),
+  };
+  outLogs.unshift(entry);
+  localStorage.setItem('atf_out_logs',JSON.stringify(outLogs));
+  if(cpcSettings.sheetsUrl){
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'TOOL_OUTWARD'})});}catch(e){}
+  }
+  outItems=[];
+  ['out-site','out-supervisor','out-reason'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('out-remarks').value='';
+  addOutItem();renderOutHistory();
+  showToast('✅ Outward logged','ok');
+}
+
+function renderOutHistory(){
+  const c=document.getElementById('out-history-list');
+  if(!outLogs.length){c.innerHTML='<div class="empty"><div class="empty-icon">🔄</div><p>No outward entries yet.</p></div>';return;}
+  const reasonLabel={reconditioning:'♻️ Reconditioning',worn:'⚠️ Worn — Scrap',broken:'❌ Broken — Scrap',return:'↩️ Return'};
+  c.innerHTML=outLogs.slice(0,15).map(d=>`
+    <div style="background:var(--steel);border:1px solid var(--iron);border-left:3px solid var(--spark);border-radius:var(--r2);padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <span style="font-size:12px;font-weight:600;color:var(--white)">${d.date}</span>
+        <span style="font-size:10px;color:var(--fog)">· ${d.siteName}</span>
+        <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(251,146,60,.1);color:var(--spark);font-weight:600">${reasonLabel[d.reason]||d.reason}</span>
+      </div>
+      <div style="font-size:11px;color:var(--fog);margin-bottom:5px">By: ${d.supervisor} · ${d.items?.length||0} tool code(s)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${(d.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(251,146,60,.1);color:var(--spark)">${i.toolCode} × ${i.qty}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// RECONDITIONING MODULE
+// ═══════════════════════════════════════════
+function initRecon(){
+  document.getElementById('recon-send-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('recon-recv-date').value=new Date().toISOString().split('T')[0];
+  populateDCDropdowns();
+  if(!reconSendItems.length) addReconSendItem();
+  populateReconSendRef();
+  renderReconHistory();
+}
+
+function setReconMode(mode){
+  reconMode=mode;
+  const sendBtn=document.getElementById('recon-send-btn');
+  const recvBtn=document.getElementById('recon-receive-btn');
+  document.getElementById('recon-send-form').style.display=mode==='send'?'block':'none';
+  document.getElementById('recon-receive-form').style.display=mode==='receive'?'block':'none';
+  if(mode==='send'){
+    sendBtn.style.border='2px solid var(--violet)';sendBtn.style.background='rgba(139,92,246,.15)';sendBtn.style.color='#c4b5fd';
+    recvBtn.style.border='2px solid var(--slate)';recvBtn.style.background='var(--iron)';recvBtn.style.color='var(--fog)';
+  } else {
+    recvBtn.style.border='2px solid var(--green)';recvBtn.style.background='rgba(16,185,129,.1)';recvBtn.style.color='var(--green)';
+    sendBtn.style.border='2px solid var(--slate)';sendBtn.style.background='var(--iron)';sendBtn.style.color='var(--fog)';
+    populateReconSendRef();
+  }
+}
+
+function addReconSendItem(){
+  const id='rs'+Date.now()+reconSendItems.length;
+  reconSendItems.push({id,component:'',toolCode:'',qty:0,newToolCost:0});
+  renderReconSendItems();
+}
+
+function renderReconSendItems(){
+  const c=document.getElementById('recon-send-items');
+  const toolData=getToolCodes();
+  const allComps=Object.keys(toolData).filter(k=>toolData[k].length>0);
+  c.innerHTML=reconSendItems.map((item,i)=>{
+    const tools=toolData[item.component]||[];
+    return`<div style="background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:10px;margin-bottom:7px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <div style="width:20px;height:20px;background:var(--violet);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
+        <span style="font-size:12px;font-weight:600;color:#c4b5fd;flex:1">Tool ${i+1}</span>
+        <button onclick="removeReconSendItem('${item.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Component</label>
+          <select onchange="onReconCompChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(139,92,246,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select —</option>
+            ${allComps.map(c=>`<option value="${c}"${item.component===c?' selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Tool Code</label>
+          <select onchange="onReconToolChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(139,92,246,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select —</option>
+            ${tools.map(t=>`<option value="${t.code}"${item.toolCode===t.code?' selected':''}>${t.code} — ${t.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Qty Sent</label>
+          <input type="number" value="${item.qty||''}" min="0" placeholder="0" oninput="updateReconSendItem('${item.id}','qty',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(139,92,246,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white);width:100%"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">New Tool Cost ₹ (for savings calc)</label>
+          <input type="number" value="${item.newToolCost||''}" min="0" placeholder="0" oninput="updateReconSendItem('${item.id}','newToolCost',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(139,92,246,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white);width:100%"/>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onReconCompChange(id,comp){const item=reconSendItems.find(i=>i.id===id);if(item){item.component=comp;item.toolCode='';}renderReconSendItems();}
+function onReconToolChange(id,code){const item=reconSendItems.find(i=>i.id===id);if(item){item.toolCode=code;item.newToolCost=getToolPrice(code)||0;}renderReconSendItems();}
+function updateReconSendItem(id,field,val){const item=reconSendItems.find(i=>i.id===id);if(item)item[field]=parseFloat(val)||0;}
+function removeReconSendItem(id){if(reconSendItems.length===1){showToast('At least one item required','err');return;}reconSendItems=reconSendItems.filter(i=>i.id!==id);renderReconSendItems();}
+
+function submitReconSend(){
+  const date=document.getElementById('recon-send-date').value;
+  const vendor=document.getElementById('recon-vendor').value.trim();
+  const site=document.getElementById('recon-site').value;
+  const expected=document.getElementById('recon-expected').value;
+  if(!date||!vendor||!site){showToast('Fill all required fields','err');return;}
+  const validItems=reconSendItems.filter(i=>i.toolCode&&i.qty>0);
+  if(!validItems.length){showToast('Add at least one tool with qty','err');return;}
+  const siteData=getSiteData();
+  const totalNewCost=validItems.reduce((s,i)=>s+(i.qty||0)*(i.newToolCost||0),0);
+  const entry={
+    id:'recon'+Date.now(),date,vendor,
+    site,siteName:siteData[site]?.name||site,
+    expectedReturn:expected,
+    items:validItems.map(i=>({...i})),
+    totalNewCost,
+    status:'pending',
+    remarks:document.getElementById('recon-send-remarks').value,
+    loggedAt:new Date().toISOString(),
+  };
+  reconLogs.unshift(entry);
+  localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
+  if(cpcSettings.sheetsUrl){
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'RECON_SEND'})});}catch(e){}
+  }
+  reconSendItems=[];
+  ['recon-vendor','recon-send-remarks','recon-expected'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('recon-site').value='';
+  addReconSendItem();renderReconHistory();
+  showToast('♻️ Reconditioning logged — sent to '+vendor,'ok');
+}
+
+function populateReconSendRef(){
+  const sel=document.getElementById('recon-send-ref');
+  if(!sel)return;
+  const pending=reconLogs.filter(r=>r.status==='pending');
+  sel.innerHTML='<option value="">— Select pending reconditioning —</option>';
+  pending.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r.id;
+    o.textContent=`${r.date} · ${r.vendor} · ${r.siteName} · ${r.items?.length||0} tools`;
+    sel.appendChild(o);
+  });
+  sel.onchange=function(){
+    const r=reconLogs.find(x=>x.id===sel.value);
+    const det=document.getElementById('recon-send-ref-details');
+    const sav=document.getElementById('recon-savings-display');
+    if(!r){det.style.display='none';sav.style.display='none';return;}
+    det.style.display='block';
+    det.innerHTML=`Vendor: <strong>${r.vendor}</strong> · Site: ${r.siteName}<br/>Sent: ${r.date}${r.expectedReturn?' · Expected back: '+r.expectedReturn:''}<br/>Tools: ${(r.items||[]).map(i=>i.toolCode+' × '+i.qty).join(', ')}<br/>New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}`;
+    const costEl=document.getElementById('recon-cost');
+    if(costEl) costEl.oninput=function(){
+      const cost=parseFloat(this.value)||0;
+      const savings=(r.totalNewCost||0)-cost;
+      sav.style.display='block';
+      document.getElementById('recon-savings-val').textContent='₹'+savings.toLocaleString('en-IN');
+      document.getElementById('recon-savings-note').textContent=`New tool cost ₹${(r.totalNewCost||0).toLocaleString('en-IN')} − Recon cost ₹${cost.toLocaleString('en-IN')} = savings ₹${savings.toLocaleString('en-IN')}`;
+    };
+  };
+}
+
+function submitReconReceive(){
+  const refId=document.getElementById('recon-send-ref').value;
+  const recvDate=document.getElementById('recon-recv-date').value;
+  const cost=parseFloat(document.getElementById('recon-cost').value)||0;
+  if(!refId){showToast('Select the send entry to update','err');return;}
+  if(!recvDate){showToast('Enter return date','err');return;}
+  if(!cost){showToast('Enter reconditioning cost','err');return;}
+  const r=reconLogs.find(x=>x.id===refId);
+  if(!r){showToast('Entry not found','err');return;}
+  r.status='received';
+  r.receivedDate=recvDate;
+  r.reconCost=cost;
+  r.savings=(r.totalNewCost||0)-cost;
+  r.receiveRemarks=document.getElementById('recon-recv-remarks').value;
+  localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
+  if(cpcSettings.sheetsUrl){
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...r,type:'RECON_RECEIVE'})});}catch(e){}
+  }
+  document.getElementById('recon-send-ref').value='';
+  document.getElementById('recon-cost').value='';
+  document.getElementById('recon-recv-remarks').value='';
+  document.getElementById('recon-send-ref-details').style.display='none';
+  document.getElementById('recon-savings-display').style.display='none';
+  populateReconSendRef();renderReconHistory();
+  showToast('✅ Tools received — savings ₹'+r.savings.toLocaleString('en-IN'),'ok');
+}
+
+function renderReconHistory(){
+  const c=document.getElementById('recon-history-list');
+  if(!reconLogs.length){c.innerHTML='<div class="empty"><div class="empty-icon">♻️</div><p>No reconditioning entries yet.</p></div>';return;}
+  c.innerHTML=reconLogs.slice(0,15).map(r=>`
+    <div style="background:var(--steel);border:1px solid var(--iron);border-left:3px solid ${r.status==='received'?'var(--green)':'var(--violet)'};border-radius:var(--r2);padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <span style="font-size:12px;font-weight:600;color:var(--white)">${r.vendor}</span>
+        <span style="font-size:10px;color:var(--fog)">· ${r.siteName} · ${r.date}</span>
+        <span style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:${r.status==='received'?'rgba(16,185,129,.1)':'rgba(139,92,246,.1)'};color:${r.status==='received'?'var(--green)':'#c4b5fd'}">${r.status==='received'?'✅ Received':'⏳ Pending'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--fog);margin-bottom:4px">Sent: ${r.date}${r.expectedReturn?' · Expected: '+r.expectedReturn:''}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+        ${(r.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(139,92,246,.1);color:#c4b5fd">${i.toolCode} × ${i.qty}</span>`).join('')}
+      </div>
+      ${r.status==='received'?`<div style="font-size:11px;color:var(--green);font-weight:600">💰 Savings: ₹${(r.savings||0).toLocaleString('en-IN')} vs buying new</div>`:`<div style="font-size:10px;color:var(--fog)">New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}</div>`}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// TOOL PRICE MANAGEMENT
+// ═══════════════════════════════════════════
+let priceFilter = 'all';
+
+function getAllToolsWithPrices(){
+  const toolData = getToolCodes();
+  const all = [];
+  Object.entries(toolData).forEach(([comp,tools])=>{
+    tools.forEach(t=>{
+      all.push({...t, component:comp, currentPrice:getToolPrice(t.code)});
+    });
+  });
+  return all;
+}
+
+function setPriceFilter(f){
+  priceFilter = f;
+  ['all','missing','has'].forEach(x=>{
+    const btn = document.getElementById('pf-'+x);
+    if(!btn) return;
+    if(x===f){
+      btn.style.border='1.5px solid var(--amber)';btn.style.background='rgba(245,158,11,.1)';btn.style.color='var(--amber)';
+    } else {
+      btn.style.border='1.5px solid var(--slate)';btn.style.background='var(--iron)';btn.style.color='var(--fog)';
+    }
+  });
+  renderPriceList();
+}
+
+function renderPriceList(){
+  const c = document.getElementById('priceList');
+  if(!c) return;
+  const compFilter = document.getElementById('priceCompFilter')?.value||'';
+  let tools = getAllToolsWithPrices();
+  if(compFilter) tools = tools.filter(t=>t.component===compFilter);
+  if(priceFilter==='missing') tools = tools.filter(t=>!t.currentPrice);
+  if(priceFilter==='has')     tools = tools.filter(t=>t.currentPrice>0);
+  if(!tools.length){
+    c.innerHTML='<div style="text-align:center;padding:20px;color:var(--fog);font-size:12px">No tools match filter.</div>';
+    return;
+  }
+  c.innerHTML = tools.map(t=>{
+    const hasPrice = t.currentPrice > 0;
+    const bc = hasPrice ? 'rgba(16,185,129,.2)' : 'rgba(239,68,68,.25)';
+    const pc = hasPrice ? 'var(--green)' : 'var(--red)';
+    return`<div style="background:var(--iron);border:1px solid ${bc};border-radius:var(--r);padding:8px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--mist)">${t.code}</div>
+        <div style="font-size:10px;color:var(--fog);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name} · ${t.component}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <span style="font-size:11px;color:var(--fog)">₹</span>
+        <input type="number" value="${t.currentPrice||''}" min="0" step="0.01" placeholder="—"
+          onchange="saveToolPrice('${t.code}',this.value)"
+          style="width:80px;background:rgba(255,255,255,.06);border:1px solid ${bc};border-radius:6px;padding:5px 7px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:${pc};text-align:right"/>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveToolPrice(code,val){
+  const prices = JSON.parse(localStorage.getItem('atf_tool_prices')||'{}');
+  prices[code] = parseFloat(val)||0;
+  localStorage.setItem('atf_tool_prices', JSON.stringify(prices));
+  showToast('✅ Price saved for '+code,'ok');
+  setTimeout(()=>renderPriceList(), 400);
+}
+
 let _tt;
 function showToast(msg,type=''){
   const t=document.getElementById('toast');t.textContent=msg;
