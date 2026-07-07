@@ -2851,8 +2851,7 @@ const COATING_REQUIRED = {
   'CU16AF01118S':true,'CU04IN000050':true,'CU04IN000051':true,
   'CU01SC000257':true,'CU01SC000258':true,'RE01SC000258':true,
   'CU01SC000259':true,'RE01SC000259':true,
-  // A944 — RE01AC30802F only
-  'RE01AC30802F':true,
+  // A944 — NO tools need coating (removed RE01AC30802F per Mahesh)
   // B493 — ALL tools
   'CU01SC000267':true,'RE01SC000267':true,
   'CU01SC000237':true,'RE01SC000237':true,
@@ -2867,7 +2866,7 @@ const COATING_REQUIRED = {
   'CU04INSC0082':true,'CU04IN000016':true,
   'CU04IN000014':true,'CU04INSC0083':true,
   'A2024041603.12':true,'A2024041603.3':true,
-  // All others default to false (no coating)
+  // All others → false (no coating)
 };
 
 function needsCoating(code){ return COATING_REQUIRED[code] === true; }
@@ -3277,9 +3276,9 @@ function onReconDCSelect(){
   const entry=outLogs.find(o=>o.id===id);
   if(!entry){return;}
 
-  // Show DC summary
-  const coatTools=entry.items.filter(i=>i.coatingRequired);
-  const noCoatTools=entry.items.filter(i=>!i.coatingRequired);
+  // Show DC summary — re-evaluate coating from master
+  const coatTools=entry.items.filter(i=>needsCoating(i.toolCode));
+  const noCoatTools=entry.items.filter(i=>!needsCoating(i.toolCode));
   summary.style.display='block';
   summary.innerHTML=`<strong style="color:#c4b5fd">DC: ${entry.dcNo}</strong> · ${entry.siteName} · ${entry.date} · By: ${entry.supervisor}<br/>
     Total tools: ${entry.items.length} &nbsp;|&nbsp;
@@ -3294,10 +3293,12 @@ function onReconDCSelect(){
 function renderReconToolChecklist(items){
   const c=document.getElementById('recon-tools-checklist');
   c.innerHTML=items.map((item,i)=>{
-    const coating=item.coatingRequired;
+    // Always re-evaluate from master — not from saved coatingRequired flag
+    const coating=needsCoating(item.toolCode);
     const newCost=getToolPrice(item.toolCode)*item.qty;
     return`<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:${coating?'rgba(245,158,11,.04)':'rgba(255,255,255,.03)'};border:1px solid ${coating?'rgba(245,158,11,.2)':'var(--slate)'};border-radius:var(--r);margin-bottom:5px;cursor:pointer" id="rcl-lbl-${i}">
       <input type="checkbox" id="rcl-cb-${i}" value="${i}"
+        data-coating="${coating}"
         onchange="updateReconCostDisplay()"
         style="accent-color:${coating?'var(--amber)':'var(--violet)'};width:15px;height:15px;flex-shrink:0"/>
       <div style="flex:1;min-width:0">
@@ -3323,10 +3324,12 @@ function selectReconTools(mode){
   entry.items.forEach((item,i)=>{
     const cb=document.getElementById('rcl-cb-'+i);
     if(!cb)return;
-    if(mode==='all') cb.checked=true;
+    // Always re-evaluate coating from master
+    const coating=needsCoating(item.toolCode);
+    if(mode==='all')       cb.checked=true;
     else if(mode==='none') cb.checked=false;
-    else if(mode==='coating') cb.checked=item.coatingRequired;
-    else if(mode==='nocoating') cb.checked=!item.coatingRequired;
+    else if(mode==='coating')   cb.checked=coating;
+    else if(mode==='nocoating') cb.checked=!coating;
   });
   updateReconCostDisplay();
 }
@@ -3360,11 +3363,11 @@ function submitReconSend(){
   const entry=outLogs.find(o=>o.id===dcId);
   if(!entry){showToast('DC not found','err');return;}
 
-  // Get selected tools
+  // Get selected tools — re-evaluate coating from master
   const selectedItems=[];
   entry.items.forEach((item,i)=>{
     const cb=document.getElementById('rcl-cb-'+i);
-    if(cb&&cb.checked) selectedItems.push({...item});
+    if(cb&&cb.checked) selectedItems.push({...item, coatingRequired:needsCoating(item.toolCode)});
   });
   if(!selectedItems.length){showToast('Select at least one tool','err');return;}
 
