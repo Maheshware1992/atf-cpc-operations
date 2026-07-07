@@ -1300,6 +1300,16 @@ function formatHeader(sheet, cols) {
 
       <div style="height:1px;background:var(--slate);margin-bottom:12px"></div>
 
+      <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📦 Change Office PIN (DC Inward + Recon)</div>
+      <div style="font-size:11px;color:var(--fog);margin-bottom:8px;line-height:1.5">Samrat and office staff use this PIN to access DC Inward and Reconditioning tabs. Default: <strong style="color:var(--green)">9999</strong></div>
+      <div class="frow">
+        <div class="fg"><label>Current Office PIN</label><input type="password" id="currentOfficePin" maxlength="4" placeholder="Current PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/></div>
+        <div class="fg"><label>New Office PIN</label><input type="password" id="newOfficePin" maxlength="4" placeholder="New 4-digit PIN" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);letter-spacing:4px"/></div>
+      </div>
+      <button onclick="changeOfficePin()" style="width:100%;padding:9px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:var(--r);color:var(--green);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px">🔐 Change Office PIN</button>
+
+      <div style="height:1px;background:var(--slate);margin-bottom:12px"></div>
+
       <div style="font-size:11px;font-weight:600;color:#93c5fd;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">👷 Change Supervisor PIN</div>
       <div style="font-size:11px;color:var(--fog);margin-bottom:8px;line-height:1.5">Supervisors use this PIN to access the URL-only view. Share this PIN with supervisors when they need to connect their phone.</div>
       <div class="frow">
@@ -2547,6 +2557,7 @@ let currentAccessLevel = 'supervisor';
 
 function getMaheshPin(){ return localStorage.getItem('atf_cpc_pin') || '1234'; }
 function getSupervisorPin(){ return localStorage.getItem('atf_cpc_sup_pin') || '5678'; }
+function getOfficePin(){ return localStorage.getItem('atf_cpc_office_pin') || '9999'; }
 
 function setAccessLevel(level){
   currentAccessLevel = level;
@@ -2650,7 +2661,19 @@ function changePin(){
   showToast('✅ Mahesh PIN changed','ok');
 }
 
-function changeSupPin(){
+function changeOfficePin(){
+  const cur=document.getElementById('currentOfficePin')?.value;
+  const nw=document.getElementById('newOfficePin')?.value;
+  if(!cur||!nw)return;
+  if(cur!==getOfficePin()&&cur!==getMaheshPin()){showToast('Current Office PIN is wrong','err');return;}
+  if(nw.length!==4||!/^\d{4}$/.test(nw)){showToast('New PIN must be exactly 4 digits','err');return;}
+  if(nw===getMaheshPin()){showToast('Office PIN cannot match Mahesh PIN','err');return;}
+  if(nw===getSupervisorPin()){showToast('Office PIN cannot match Supervisor PIN','err');return;}
+  localStorage.setItem('atf_cpc_office_pin',nw);
+  document.getElementById('currentOfficePin').value='';
+  document.getElementById('newOfficePin').value='';
+  showToast('✅ Office PIN changed','ok');
+}
   const cur=document.getElementById('currentSupPin')?.value;
   const nw=document.getElementById('newSupPin')?.value;
   if(!cur||!nw)return;
@@ -2697,7 +2720,7 @@ function updateOfficePinDots(){
 }
 
 function checkOfficePin(){
-  if(officePinEntry===getMaheshPin()){
+  if(officePinEntry===getOfficePin()||officePinEntry===getMaheshPin()){
     officeUnlocked=true;
     document.getElementById('office-lock-overlay').style.display='none';
     ['tab-dcinward','tab-recon'].forEach(id=>{
