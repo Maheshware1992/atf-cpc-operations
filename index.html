@@ -621,20 +621,23 @@ select option{background:var(--steel);color:var(--white)}
     </div>
     <div class="card-body">
       <div style="font-size:11px;color:var(--fog);margin-bottom:12px;padding:8px 10px;background:rgba(251,146,60,.06);border-radius:var(--r);border:1px solid rgba(251,146,60,.15);line-height:1.6">
-        📤 Log every time tools leave the site — worn, broken, or sent for reconditioning back to ATF office.
+        📤 Log every time tools leave the site — worn, broken, or sent for reconditioning back to ATF office. DC Number is mandatory — get it from the physical DC generated at site.
       </div>
       <div class="frow">
+        <div class="fg"><label>DC Number (Tally) <span class="req">*</span></label><input id="out-dc-no" placeholder="e.g. DC-OUT-2627-0012"/></div>
         <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="out-date"/></div>
+      </div>
+      <div class="frow">
         <div class="fg">
           <label>Site <span class="req">*</span></label>
           <select id="out-site"><option value="">— Select —</option></select>
         </div>
-      </div>
-      <div class="frow">
         <div class="fg">
           <label>Supervisor <span class="req">*</span></label>
           <select id="out-supervisor"><option value="">— Select —</option></select>
         </div>
+      </div>
+      <div class="frow">
         <div class="fg">
           <label>Outward Reason <span class="req">*</span></label>
           <select id="out-reason">
@@ -695,22 +698,71 @@ select option{background:var(--steel);color:var(--white)}
 
       <!-- SEND form -->
       <div id="recon-send-form">
-        <div class="frow">
-          <div class="fg"><label>Date Sent <span class="req">*</span></label><input type="date" id="recon-send-date"/></div>
-          <div class="fg"><label>Vendor Name <span class="req">*</span></label><input id="recon-vendor" placeholder="e.g. Precision Tools, Pune"/></div>
+        <div style="font-size:11px;color:var(--fog);margin-bottom:12px;padding:8px 10px;background:rgba(139,92,246,.06);border-radius:var(--r);border:1px solid rgba(139,92,246,.15);line-height:1.6">
+          ♻️ Select the Outward DC logged by supervisor — tools auto-load. Select which tools go to which vendor. Tools tagged 🎨 need coating — send those to coating vendor separately.
         </div>
-        <div class="frow">
-          <div class="fg">
-            <label>Site <span class="req">*</span></label>
-            <select id="recon-site"><option value="">— Select —</option></select>
+
+        <!-- Step 1: Select Outward DC -->
+        <div style="font-size:10px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Step 1 — Select Outward DC</div>
+        <div class="fg" style="margin-bottom:12px">
+          <label>Outward DC Number <span class="req">*</span></label>
+          <select id="recon-outward-dc" onchange="onReconDCSelect()" style="background:var(--iron);border:1.5px solid rgba(139,92,246,.3);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);-webkit-appearance:none">
+            <option value="">— Select DC from supervisor outward log —</option>
+          </select>
+        </div>
+
+        <!-- DC Summary (shows after DC selected) -->
+        <div id="recon-dc-summary" style="display:none;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:11px;color:#c4b5fd;line-height:1.8"></div>
+
+        <!-- Step 2: Tool selection with coating tags -->
+        <div id="recon-tool-selection" style="display:none">
+          <div style="font-size:10px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Step 2 — Select Tools for This Vendor</div>
+          <div style="font-size:11px;color:var(--fog);margin-bottom:8px;line-height:1.6">
+            🎨 = Coating required — send to coating vendor separately and generate separate DC in Tally.<br/>
+            Tick the tools for THIS vendor entry.
           </div>
-          <div class="fg"><label>Expected Return Date</label><input type="date" id="recon-expected"/></div>
+          <div id="recon-tools-checklist" style="margin-bottom:10px"></div>
+
+          <!-- Select all helpers -->
+          <div style="display:flex;gap:7px;margin-bottom:12px">
+            <button onclick="selectReconTools('all')" style="flex:1;padding:7px;background:none;border:1px solid rgba(139,92,246,.3);border-radius:var(--r);color:#c4b5fd;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;cursor:pointer">☑ All</button>
+            <button onclick="selectReconTools('coating')" style="flex:1;padding:7px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:var(--r);color:var(--amber);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;cursor:pointer">🎨 Coating only</button>
+            <button onclick="selectReconTools('nocoating')" style="flex:1;padding:7px;background:none;border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;cursor:pointer">No Coating only</button>
+            <button onclick="selectReconTools('none')" style="flex:1;padding:7px;background:none;border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;cursor:pointer">☐ None</button>
+          </div>
+
+          <!-- Step 3: Vendor details -->
+          <div style="font-size:10px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Step 3 — Vendor Details</div>
+          <div class="frow">
+            <div class="fg"><label>Date Sent <span class="req">*</span></label><input type="date" id="recon-send-date"/></div>
+            <div class="fg"><label>Vendor Name <span class="req">*</span></label><input id="recon-vendor" placeholder="e.g. Precision Regrind Pune"/></div>
+          </div>
+          <div class="frow">
+            <div class="fg">
+              <label>Service Type <span class="req">*</span></label>
+              <select id="recon-service-type" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);-webkit-appearance:none">
+                <option value="">— Select —</option>
+                <option value="regrind_coating">🎨 Regrinding + Coating</option>
+                <option value="regrind_only">🔧 Regrinding Only</option>
+                <option value="coating_only">🎨 Coating Only</option>
+              </select>
+            </div>
+            <div class="fg"><label>Expected Return Date</label><input type="date" id="recon-expected"/></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label>Tally DC Number (for coating tools)</label><input id="recon-tally-dc" placeholder="DC number from Tally for this batch"/></div>
+          </div>
+          <div class="fg" style="margin-bottom:10px"><label>Remarks</label><input id="recon-send-remarks" placeholder="e.g. 2nd reconditioning batch — B493 drills, all worn out"/></div>
+
+          <!-- Cost summary -->
+          <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
+            <div style="font-size:10px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">New Tool Value of Selected Tools</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green)" id="recon-new-cost-display">₹ 0</div>
+            <div style="font-size:10px;color:var(--fog);margin-top:2px">Savings will be calculated when tools are received back</div>
+          </div>
+
+          <button onclick="submitReconSend()" style="width:100%;padding:13px;background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer">♻️ LOG — SENT TO VENDOR</button>
         </div>
-        <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 7px">Tools Sent for Reconditioning</div>
-        <div id="recon-send-items"></div>
-        <button onclick="addReconSendItem()" style="width:100%;padding:8px;background:none;border:1.5px dashed rgba(139,92,246,.35);border-radius:var(--r);color:#c4b5fd;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px">➕ Add Tool</button>
-        <div class="fg" style="margin-bottom:10px"><label>Remarks</label><input id="recon-send-remarks" placeholder="e.g. All PCD reamers from B128 batch — 2nd reconditioning"/></div>
-        <button onclick="submitReconSend()" style="width:100%;padding:13px;background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer">♻️ LOG — SENT TO VENDOR</button>
       </div>
 
       <!-- RECEIVE form -->
@@ -2790,6 +2842,37 @@ function clearCPCData(){
 }
 
 // ═══════════════════════════════════════════
+// COATING MASTER — which tool codes need coating
+// ═══════════════════════════════════════════
+const COATING_REQUIRED = {
+  // B487 — ALL tools
+  'CU04IN000004':true,'CU01SC000017':true,'CU01SC000018':true,
+  // A897 Shaft — ALL tools
+  'CU16AF01118S':true,'CU04IN000050':true,'CU04IN000051':true,
+  'CU01SC000257':true,'CU01SC000258':true,'RE01SC000258':true,
+  'CU01SC000259':true,'RE01SC000259':true,
+  // A944 — RE01AC30802F only
+  'RE01AC30802F':true,
+  // B493 — ALL tools
+  'CU01SC000267':true,'RE01SC000267':true,
+  'CU01SC000237':true,'RE01SC000237':true,
+  'CU01SC000236':true,'RE01SC000236':true,
+  'CU01SC000239':true,'RE01SC000239':true,
+  'CU01SC000047':true,'RE01SC000047':true,
+  'CU01SC000238':true,'RE01SC000238':true,
+  'CU01SC000048':true,'RE01SC000048':true,
+  'CU01SC000050':true,'RE01SC000050':true,
+  'CU01SC000264':true,'ER01SC000264':true,
+  'CU04INSC0081':true,'A2024092502':true,
+  'CU04INSC0082':true,'CU04IN000016':true,
+  'CU04IN000014':true,'CU04INSC0083':true,
+  'A2024041603.12':true,'A2024041603.3':true,
+  // All others default to false (no coating)
+};
+
+function needsCoating(code){ return COATING_REQUIRED[code] === true; }
+
+// ═══════════════════════════════════════════
 // DC INWARD MODULE
 // ═══════════════════════════════════════════
 let dcLogs   = JSON.parse(localStorage.getItem('atf_dc_logs')  || '[]');
@@ -3108,20 +3191,23 @@ function updateOutItem(id,field,val){const item=outItems.find(i=>i.id===id);if(i
 function removeOutItem(id){if(outItems.length===1){showToast('At least one item required','err');return;}outItems=outItems.filter(i=>i.id!==id);renderOutItems();}
 
 function submitOutward(){
-  const date=document.getElementById('out-date').value;
-  const site=document.getElementById('out-site').value;
-  const sup=document.getElementById('out-supervisor').value;
-  const reason=document.getElementById('out-reason').value;
+  const dcNo  = document.getElementById('out-dc-no').value.trim();
+  const date  = document.getElementById('out-date').value;
+  const site  = document.getElementById('out-site').value;
+  const sup   = document.getElementById('out-supervisor').value;
+  const reason= document.getElementById('out-reason').value;
+  if(!dcNo)  {showToast('Enter DC Number — mandatory','err');return;}
   if(!date||!site||!sup||!reason){showToast('Fill all required fields','err');return;}
   const validItems=outItems.filter(i=>i.toolCode&&i.qty>0);
   if(!validItems.length){showToast('Add at least one tool with qty','err');return;}
   const siteData=getSiteData();
   const entry={
-    id:'out'+Date.now(),date,
+    id:'out'+Date.now(),dcNo,date,
     site,siteName:siteData[site]?.name||site,
     supervisor:sup,reason,
-    items:validItems.map(i=>({...i})),
+    items:validItems.map(i=>({...i,coatingRequired:needsCoating(i.toolCode)})),
     remarks:document.getElementById('out-remarks').value,
+    reconStatus:'pending', // tracks if sent for recon
     loggedAt:new Date().toISOString(),
   };
   outLogs.unshift(entry);
@@ -3130,28 +3216,30 @@ function submitOutward(){
     try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'TOOL_OUTWARD'})});}catch(e){}
   }
   outItems=[];
+  ['out-dc-no','out-remarks'].forEach(id=>document.getElementById(id).value='');
   ['out-site','out-supervisor','out-reason'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('out-remarks').value='';
   addOutItem();renderOutHistory();
-  showToast('✅ Outward logged','ok');
+  showToast('✅ Outward DC '+dcNo+' logged','ok');
 }
 
 function renderOutHistory(){
   const c=document.getElementById('out-history-list');
   if(!outLogs.length){c.innerHTML='<div class="empty"><div class="empty-icon">🔄</div><p>No outward entries yet.</p></div>';return;}
   const reasonLabel={reconditioning:'♻️ Reconditioning',worn:'⚠️ Worn — Scrap',broken:'❌ Broken — Scrap',return:'↩️ Return'};
-  c.innerHTML=outLogs.slice(0,15).map(d=>`
-    <div style="background:var(--steel);border:1px solid var(--iron);border-left:3px solid var(--spark);border-radius:var(--r2);padding:11px 13px;margin-bottom:8px">
+  c.innerHTML=outLogs.slice(0,15).map(d=>{
+    const coatCount=(d.items||[]).filter(i=>i.coatingRequired).length;
+    return`<div style="background:var(--steel);border:1px solid var(--iron);border-left:3px solid var(--spark);border-radius:var(--r2);padding:11px 13px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-        <span style="font-size:12px;font-weight:600;color:var(--white)">${d.date}</span>
-        <span style="font-size:10px;color:var(--fog)">· ${d.siteName}</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--spark)">${d.dcNo||'—'}</span>
+        <span style="font-size:10px;color:var(--fog)">· ${d.date} · ${d.siteName}</span>
         <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(251,146,60,.1);color:var(--spark);font-weight:600">${reasonLabel[d.reason]||d.reason}</span>
       </div>
-      <div style="font-size:11px;color:var(--fog);margin-bottom:5px">By: ${d.supervisor} · ${d.items?.length||0} tool code(s)</div>
+      <div style="font-size:11px;color:var(--fog);margin-bottom:5px">By: ${d.supervisor} · ${d.items?.length||0} tool code(s)${coatCount>0?` · <span style="color:var(--amber)">🎨 ${coatCount} need coating</span>`:''}</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px">
-        ${(d.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(251,146,60,.1);color:var(--spark)">${i.toolCode} × ${i.qty}</span>`).join('')}
+        ${(d.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${i.coatingRequired?'rgba(245,158,11,.12)':'rgba(251,146,60,.1)'};color:${i.coatingRequired?'var(--amber)':'var(--spark)'}">${i.toolCode} × ${i.qty}${i.coatingRequired?' 🎨':''}</span>`).join('')}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════
@@ -3161,9 +3249,160 @@ function initRecon(){
   document.getElementById('recon-send-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('recon-recv-date').value=new Date().toISOString().split('T')[0];
   populateDCDropdowns();
-  if(!reconSendItems.length) addReconSendItem();
+  populateOutwardDCDropdown();
   populateReconSendRef();
   renderReconHistory();
+}
+
+function populateOutwardDCDropdown(){
+  const sel=document.getElementById('recon-outward-dc');
+  if(!sel)return;
+  // Show all reconditioning outward entries
+  const reconOuts=outLogs.filter(o=>o.reason==='reconditioning');
+  sel.innerHTML='<option value="">— Select DC from supervisor outward log —</option>';
+  reconOuts.forEach(o=>{
+    const opt=document.createElement('option');
+    opt.value=o.id;
+    const coatCount=o.items.filter(i=>i.coatingRequired).length;
+    opt.textContent=`${o.dcNo} · ${o.siteName} · ${o.date} · ${o.items.length} tools${coatCount>0?' ('+coatCount+' need coating)':''}`;
+    sel.appendChild(opt);
+  });
+}
+
+function onReconDCSelect(){
+  const id=document.getElementById('recon-outward-dc').value;
+  const summary=document.getElementById('recon-dc-summary');
+  const toolSection=document.getElementById('recon-tool-selection');
+  if(!id){summary.style.display='none';toolSection.style.display='none';return;}
+  const entry=outLogs.find(o=>o.id===id);
+  if(!entry){return;}
+
+  // Show DC summary
+  const coatTools=entry.items.filter(i=>i.coatingRequired);
+  const noCoatTools=entry.items.filter(i=>!i.coatingRequired);
+  summary.style.display='block';
+  summary.innerHTML=`<strong style="color:#c4b5fd">DC: ${entry.dcNo}</strong> · ${entry.siteName} · ${entry.date} · By: ${entry.supervisor}<br/>
+    Total tools: ${entry.items.length} &nbsp;|&nbsp;
+    <span style="color:var(--amber)">🎨 Need coating: ${coatTools.length}</span> &nbsp;|&nbsp;
+    <span style="color:var(--green)">No coating: ${noCoatTools.length}</span>`;
+
+  // Render tool checklist
+  renderReconToolChecklist(entry.items);
+  toolSection.style.display='block';
+}
+
+function renderReconToolChecklist(items){
+  const c=document.getElementById('recon-tools-checklist');
+  c.innerHTML=items.map((item,i)=>{
+    const coating=item.coatingRequired;
+    const newCost=getToolPrice(item.toolCode)*item.qty;
+    return`<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:${coating?'rgba(245,158,11,.04)':'rgba(255,255,255,.03)'};border:1px solid ${coating?'rgba(245,158,11,.2)':'var(--slate)'};border-radius:var(--r);margin-bottom:5px;cursor:pointer" id="rcl-lbl-${i}">
+      <input type="checkbox" id="rcl-cb-${i}" value="${i}"
+        onchange="updateReconCostDisplay()"
+        style="accent-color:${coating?'var(--amber)':'var(--violet)'};width:15px;height:15px;flex-shrink:0"/>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${coating?'var(--amber)':'#c4b5fd'}">${item.toolCode}</span>
+          ${coating?'<span style="font-size:9px;padding:2px 6px;border-radius:8px;background:rgba(245,158,11,.15);color:var(--amber);font-weight:700">🎨 COATING</span>':'<span style="font-size:9px;padding:2px 6px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--fog)">NO COATING</span>'}
+        </div>
+        <div style="font-size:10px;color:var(--fog);margin-top:1px">${item.component} · Qty: ${item.qty} · ${item.condition||''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:11px;font-weight:600;color:var(--green)">₹${newCost.toLocaleString('en-IN')}</div>
+        <div style="font-size:9px;color:var(--fog)">new value</div>
+      </div>
+    </label>`;
+  }).join('');
+  updateReconCostDisplay();
+}
+
+function selectReconTools(mode){
+  const id=document.getElementById('recon-outward-dc').value;
+  const entry=outLogs.find(o=>o.id===id);
+  if(!entry)return;
+  entry.items.forEach((item,i)=>{
+    const cb=document.getElementById('rcl-cb-'+i);
+    if(!cb)return;
+    if(mode==='all') cb.checked=true;
+    else if(mode==='none') cb.checked=false;
+    else if(mode==='coating') cb.checked=item.coatingRequired;
+    else if(mode==='nocoating') cb.checked=!item.coatingRequired;
+  });
+  updateReconCostDisplay();
+}
+
+function updateReconCostDisplay(){
+  const id=document.getElementById('recon-outward-dc').value;
+  const entry=outLogs.find(o=>o.id===id);
+  if(!entry)return;
+  let total=0;
+  entry.items.forEach((item,i)=>{
+    const cb=document.getElementById('rcl-cb-'+i);
+    if(cb&&cb.checked) total+=getToolPrice(item.toolCode)*item.qty;
+  });
+  const el=document.getElementById('recon-new-cost-display');
+  if(el) el.textContent='₹'+total.toLocaleString('en-IN');
+}
+
+function submitReconSend(){
+  const dcId   =document.getElementById('recon-outward-dc').value;
+  const date   =document.getElementById('recon-send-date').value;
+  const vendor =document.getElementById('recon-vendor').value.trim();
+  const svcType=document.getElementById('recon-service-type').value;
+  const expected=document.getElementById('recon-expected').value;
+  const tallyDC =document.getElementById('recon-tally-dc').value.trim();
+
+  if(!dcId)  {showToast('Select outward DC','err');return;}
+  if(!date)  {showToast('Enter date sent','err');return;}
+  if(!vendor){showToast('Enter vendor name','err');return;}
+  if(!svcType){showToast('Select service type','err');return;}
+
+  const entry=outLogs.find(o=>o.id===dcId);
+  if(!entry){showToast('DC not found','err');return;}
+
+  // Get selected tools
+  const selectedItems=[];
+  entry.items.forEach((item,i)=>{
+    const cb=document.getElementById('rcl-cb-'+i);
+    if(cb&&cb.checked) selectedItems.push({...item});
+  });
+  if(!selectedItems.length){showToast('Select at least one tool','err');return;}
+
+  const siteData=getSiteData();
+  const totalNewCost=selectedItems.reduce((s,i)=>s+getToolPrice(i.toolCode)*i.qty,0);
+  const coatCount=selectedItems.filter(i=>i.coatingRequired).length;
+
+  const recon={
+    id:'recon'+Date.now(),
+    outwardDcId:dcId,outwardDcNo:entry.dcNo,
+    date,vendor,serviceType:svcType,
+    site:entry.site,siteName:entry.siteName,
+    expectedReturn:expected,tallyDC,
+    items:selectedItems,
+    totalNewCost,
+    coatingToolsCount:coatCount,
+    status:'pending',
+    remarks:document.getElementById('recon-send-remarks').value,
+    loggedAt:new Date().toISOString(),
+  };
+  reconLogs.unshift(recon);
+  localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
+
+  if(cpcSettings.sheetsUrl){
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...recon,type:'RECON_SEND'})});}catch(e){}
+  }
+
+  // Reset form
+  document.getElementById('recon-outward-dc').value='';
+  document.getElementById('recon-dc-summary').style.display='none';
+  document.getElementById('recon-tool-selection').style.display='none';
+  ['recon-vendor','recon-send-remarks','recon-expected','recon-tally-dc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('recon-service-type').value='';
+
+  populateOutwardDCDropdown();
+  populateReconSendRef();
+  renderReconHistory();
+  showToast(`♻️ Sent to ${vendor} — ${selectedItems.length} tools · ₹${totalNewCost.toLocaleString('en-IN')} value`,'ok');
 }
 
 function setReconMode(mode){
@@ -3326,6 +3565,7 @@ function submitReconReceive(){
 function renderReconHistory(){
   const c=document.getElementById('recon-history-list');
   if(!reconLogs.length){c.innerHTML='<div class="empty"><div class="empty-icon">♻️</div><p>No reconditioning entries yet.</p></div>';return;}
+  const svcLabel={'regrind_coating':'🎨 Regrind + Coating','regrind_only':'🔧 Regrind Only','coating_only':'🎨 Coating Only'};
   c.innerHTML=reconLogs.slice(0,15).map(r=>`
     <div style="background:var(--steel);border:1px solid var(--iron);border-left:3px solid ${r.status==='received'?'var(--green)':'var(--violet)'};border-radius:var(--r2);padding:11px 13px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
@@ -3333,11 +3573,19 @@ function renderReconHistory(){
         <span style="font-size:10px;color:var(--fog)">· ${r.siteName} · ${r.date}</span>
         <span style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:${r.status==='received'?'rgba(16,185,129,.1)':'rgba(139,92,246,.1)'};color:${r.status==='received'?'var(--green)':'#c4b5fd'}">${r.status==='received'?'✅ Received':'⏳ Pending'}</span>
       </div>
-      <div style="font-size:11px;color:var(--fog);margin-bottom:4px">Sent: ${r.date}${r.expectedReturn?' · Expected: '+r.expectedReturn:''}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-        ${(r.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(139,92,246,.1);color:#c4b5fd">${i.toolCode} × ${i.qty}</span>`).join('')}
+      <div style="font-size:11px;color:var(--fog);margin-bottom:4px">
+        Outward DC: <strong style="color:var(--mist)">${r.outwardDcNo||'—'}</strong> · 
+        ${svcLabel[r.serviceType]||r.serviceType||'—'} · 
+        ${r.items?.length||0} tools
+        ${r.coatingToolsCount>0?`· <span style="color:var(--amber)">🎨 ${r.coatingToolsCount} coating</span>`:''}
       </div>
-      ${r.status==='received'?`<div style="font-size:11px;color:var(--green);font-weight:600">💰 Savings: ₹${(r.savings||0).toLocaleString('en-IN')} vs buying new</div>`:`<div style="font-size:10px;color:var(--fog)">New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}</div>`}
+      ${r.tallyDC?`<div style="font-size:10px;color:var(--fog);margin-bottom:4px">Tally DC: ${r.tallyDC}</div>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+        ${(r.items||[]).map(i=>`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${i.coatingRequired?'rgba(245,158,11,.12)':'rgba(139,92,246,.1)'};color:${i.coatingRequired?'var(--amber)':'#c4b5fd'}">${i.toolCode} × ${i.qty}${i.coatingRequired?' 🎨':''}</span>`).join('')}
+      </div>
+      ${r.status==='received'?
+        `<div style="font-size:11px;color:var(--green);font-weight:600">💰 Savings: ₹${(r.savings||0).toLocaleString('en-IN')} vs buying new</div>`:
+        `<div style="font-size:10px;color:var(--fog)">New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}${r.expectedReturn?' · Expected: '+r.expectedReturn:''}</div>`}
     </div>`).join('');
 }
 
