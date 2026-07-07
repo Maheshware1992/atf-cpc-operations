@@ -2685,6 +2685,8 @@ function changeOfficePin(){
   document.getElementById('newOfficePin').value='';
   showToast('✅ Office PIN changed','ok');
 }
+
+function changeSupPin(){
   const cur=document.getElementById('currentSupPin')?.value;
   const nw=document.getElementById('newSupPin')?.value;
   if(!cur||!nw)return;
