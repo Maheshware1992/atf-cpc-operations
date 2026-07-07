@@ -2619,12 +2619,23 @@ function checkPin(){
 }
 
 function lockSettings(){
-  settingsUnlocked=false;pinEntry='';updatePinDots();
-  document.getElementById('settingsLock').style.display='block';
-  document.getElementById('supervisorContent').style.display='none';
-  document.getElementById('settingsContent').style.display='none';
-  setAccessLevel('supervisor');
-  showToast('🔒 Settings locked');
+  settingsUnlocked=false;
+  pinEntry='';
+  updatePinDots();
+  const lockEl=document.getElementById('settingsLock');
+  const supEl=document.getElementById('supervisorContent');
+  const fullEl=document.getElementById('settingsContent');
+  if(lockEl) lockEl.style.display='block';
+  if(supEl)  supEl.style.display='none';
+  if(fullEl) fullEl.style.display='none';
+  // Reset to supervisor level safely
+  currentAccessLevel='supervisor';
+  const supBtn=document.getElementById('lvl-supervisor');
+  const mahBtn=document.getElementById('lvl-mahesh');
+  const desc=document.getElementById('accessDesc');
+  if(supBtn){supBtn.style.border='2px solid #3b82f6';supBtn.style.background='rgba(59,130,246,.15)';supBtn.style.color='#93c5fd';}
+  if(mahBtn){mahBtn.style.border='2px solid var(--slate)';mahBtn.style.background='var(--iron)';mahBtn.style.color='var(--fog)';}
+  if(desc){desc.style.background='rgba(59,130,246,.08)';desc.style.borderColor='rgba(59,130,246,.2)';desc.style.color='#93c5fd';desc.textContent='Supervisor access: paste Google Sheets URL only';}
 }
 
 function updateSupBanner(){
@@ -2742,19 +2753,28 @@ function closeOfficeLock(){
 
 function switchTab(t){
   ['log','dashboard','toolchange','morning','dcinward','outward','recon','settings'].forEach(p=>{
-    document.getElementById('pane-'+p).classList.toggle('active',p===t);
-    document.getElementById('tab-'+p).classList.toggle('active',p===t);
+    const pane=document.getElementById('pane-'+p);
+    const tab=document.getElementById('tab-'+p);
+    if(pane) pane.classList.toggle('active',p===t);
+    if(tab)  tab.classList.toggle('active',p===t);
   });
-  if(t!=='settings') lockSettings();
+  // Only lock settings when navigating AWAY from it
+  if(t!=='settings' && settingsUnlocked) lockSettings();
   if(t==='dashboard')  renderDashboard();
   if(t==='toolchange') initToolChangeTab();
   if(t==='dcinward')   initDCInward();
   if(t==='outward')    initOutward();
   if(t==='recon')      initRecon();
   if(t==='settings'){
-    document.getElementById('settingsLock').style.display='block';
-    document.getElementById('supervisorContent').style.display='none';
-    document.getElementById('settingsContent').style.display='none';
+    // Only reset if not already showing lock
+    const lockEl=document.getElementById('settingsLock');
+    if(lockEl && !settingsUnlocked){
+      lockEl.style.display='block';
+      const supEl=document.getElementById('supervisorContent');
+      const fullEl=document.getElementById('settingsContent');
+      if(supEl) supEl.style.display='none';
+      if(fullEl) fullEl.style.display='none';
+    }
   }
 }
 
