@@ -3477,38 +3477,6 @@ function onReconToolChange(id,code){const item=reconSendItems.find(i=>i.id===id)
 function updateReconSendItem(id,field,val){const item=reconSendItems.find(i=>i.id===id);if(item)item[field]=parseFloat(val)||0;}
 function removeReconSendItem(id){if(reconSendItems.length===1){showToast('At least one item required','err');return;}reconSendItems=reconSendItems.filter(i=>i.id!==id);renderReconSendItems();}
 
-function submitReconSend(){
-  const date=document.getElementById('recon-send-date').value;
-  const vendor=document.getElementById('recon-vendor').value.trim();
-  const site=document.getElementById('recon-site').value;
-  const expected=document.getElementById('recon-expected').value;
-  if(!date||!vendor||!site){showToast('Fill all required fields','err');return;}
-  const validItems=reconSendItems.filter(i=>i.toolCode&&i.qty>0);
-  if(!validItems.length){showToast('Add at least one tool with qty','err');return;}
-  const siteData=getSiteData();
-  const totalNewCost=validItems.reduce((s,i)=>s+(i.qty||0)*(i.newToolCost||0),0);
-  const entry={
-    id:'recon'+Date.now(),date,vendor,
-    site,siteName:siteData[site]?.name||site,
-    expectedReturn:expected,
-    items:validItems.map(i=>({...i})),
-    totalNewCost,
-    status:'pending',
-    remarks:document.getElementById('recon-send-remarks').value,
-    loggedAt:new Date().toISOString(),
-  };
-  reconLogs.unshift(entry);
-  localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
-  if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'RECON_SEND'})});}catch(e){}
-  }
-  reconSendItems=[];
-  ['recon-vendor','recon-send-remarks','recon-expected'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('recon-site').value='';
-  addReconSendItem();renderReconHistory();
-  showToast('♻️ Reconditioning logged — sent to '+vendor,'ok');
-}
-
 function populateReconSendRef(){
   const sel=document.getElementById('recon-send-ref');
   if(!sel)return;
