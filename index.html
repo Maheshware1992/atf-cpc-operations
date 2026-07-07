@@ -30,6 +30,8 @@ body{font-family:'Inter',sans-serif;background:var(--ink);min-height:100vh;color
 .tab-bar{display:flex;background:var(--steel);border-bottom:1px solid var(--iron)}
 .tab{flex:1;padding:10px 3px;background:none;border:none;color:var(--fog);font-family:'Inter',sans-serif;font-size:10px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:3px}
 .tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+.office-tab{color:var(--fog);opacity:.7;font-size:9px !important}
+.office-tab.unlocked{opacity:1;color:var(--green)}
 
 /* PANES */
 .pane{display:none;padding:12px;max-width:700px;margin:0 auto}
@@ -224,9 +226,9 @@ select option{background:var(--steel);color:var(--white)}
   <button class="tab"        onclick="switchTab('dashboard')" id="tab-dashboard">📊 Dashboard</button>
   <button class="tab"        onclick="switchTab('toolchange')" id="tab-toolchange">🔧 Tool Change</button>
   <button class="tab"        onclick="switchTab('morning')"   id="tab-morning">☀️ Morning</button>
-  <button class="tab"        onclick="switchTab('dcinward')"  id="tab-dcinward">📦 DC In</button>
   <button class="tab"        onclick="switchTab('outward')"   id="tab-outward">🔄 Outward</button>
-  <button class="tab"        onclick="switchTab('recon')"     id="tab-recon">♻️ Recon</button>
+  <button class="tab office-tab" onclick="handleOfficeTab('dcinward')"  id="tab-dcinward" title="Office Staff Only">📦 DC In 🔒</button>
+  <button class="tab office-tab" onclick="handleOfficeTab('recon')"     id="tab-recon"    title="Office Staff Only">♻️ Recon 🔒</button>
   <button class="tab"        onclick="switchTab('settings')"  id="tab-settings">⚙️</button>
 </div>
 
@@ -536,6 +538,46 @@ select option{background:var(--steel);color:var(--white)}
   </div>
 
 </div><!-- /pane-toolchange -->
+
+<!-- ════ OFFICE PIN LOCK OVERLAY ════ -->
+<div id="office-lock-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--ink);z-index:500;overflow-y:auto">
+  <div style="max-width:360px;margin:60px auto 0;padding:20px;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">🔒</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;color:var(--white);margin-bottom:6px">Office Access Only</div>
+    <div style="font-size:12px;color:var(--fog);margin-bottom:8px;line-height:1.7">
+      DC Inward and Reconditioning tabs contain pricing information.<br/>Enter Mahesh PIN to access.
+    </div>
+    <div style="font-size:11px;color:var(--amber);margin-bottom:20px;padding:7px 12px;background:rgba(245,158,11,.08);border-radius:var(--r);border:1px solid rgba(245,158,11,.2)">
+      Line supervisors: use 📝 Shift Log, 🔧 Tool Change and 🔄 Outward tabs
+    </div>
+
+    <!-- PIN dots -->
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px">
+      <div id="opd1" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+      <div id="opd2" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+      <div id="opd3" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+      <div id="opd4" style="width:14px;height:14px;border-radius:50%;border:2px solid var(--slate);background:transparent;transition:background .2s"></div>
+    </div>
+
+    <!-- PIN PAD -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:220px;margin:0 auto 16px">
+      <button onclick="officePinPress('1')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">1</button>
+      <button onclick="officePinPress('2')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">2</button>
+      <button onclick="officePinPress('3')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">3</button>
+      <button onclick="officePinPress('4')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">4</button>
+      <button onclick="officePinPress('5')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">5</button>
+      <button onclick="officePinPress('6')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">6</button>
+      <button onclick="officePinPress('7')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">7</button>
+      <button onclick="officePinPress('8')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">8</button>
+      <button onclick="officePinPress('9')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">9</button>
+      <button disabled style="padding:16px;background:transparent;border:1px solid transparent;border-radius:var(--r);color:transparent;font-size:22px"></button>
+      <button onclick="officePinPress('0')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">0</button>
+      <button onclick="officePinPress('⌫')" style="padding:16px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--amber);font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;cursor:pointer">⌫</button>
+    </div>
+    <div id="officePinError" style="font-size:11px;color:var(--red);height:16px;margin-bottom:12px"></div>
+    <button onclick="closeOfficeLock()" style="padding:10px 24px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">✕ Cancel</button>
+  </div>
+</div>
 
 <!-- ════ DC INWARD ════ -->
 <div id="pane-dcinward" class="pane">
@@ -1205,13 +1247,17 @@ function formatHeader(sheet, cols) {
 
   <!-- Data export & reset -->
   <div class="card">
-    <div class="card-hdr"><span class="ch-icon">📤</span><span class="ch-title">DATA EXPORT</span><span class="ch-tag">Backup</span></div>
+    <div class="card-hdr"><span class="ch-icon">📤</span><span class="ch-title">DATA EXPORT & RESET</span><span class="ch-tag">Backup</span></div>
     <div class="card-body">
       <div style="font-size:11px;color:var(--fog);margin-bottom:10px"><span id="cpcLogCount">0</span> shift logs stored on this device.</div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
         <button onclick="exportCPCCSV()" style="flex:1;padding:10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">📥 Export CSV</button>
-        <button onclick="clearCPCData()" style="flex:1;padding:10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r);color:var(--red);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🗑️ Clear Data</button>
+        <button onclick="clearCPCData()" style="flex:1;padding:10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r);color:var(--red);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🗑️ Clear Shift Logs</button>
       </div>
+      <button onclick="clearAllTestData()" style="width:100%;padding:11px;background:rgba(239,68,68,.12);border:1.5px solid rgba(239,68,68,.4);border-radius:var(--r);color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:.5px;cursor:pointer">
+        🗑️ CLEAR ALL TEST DATA (Shift + Tool Changes + DC + Outward + Recon)
+      </button>
+      <div style="font-size:10px;color:var(--fog);text-align:center;margin-top:6px;line-height:1.5">Use this once before going live — removes all entries made during testing</div>
     </div>
   </div>
   <!-- TOOL PRICE MANAGEMENT -->
@@ -2616,12 +2662,67 @@ function changeSupPin(){
   showToast('✅ Supervisor PIN changed','ok');
 }
 
+// ═══════════════════════════════════════════
+// OFFICE TAB PIN LOCK
+// ═══════════════════════════════════════════
+let officePinEntry   = '';
+let officeUnlocked   = false;
+let pendingOfficeTab = '';
+
+function handleOfficeTab(tab){
+  if(officeUnlocked){
+    switchTab(tab);
+  } else {
+    pendingOfficeTab = tab;
+    officePinEntry   = '';
+    updateOfficePinDots();
+    document.getElementById('officePinError').textContent='';
+    document.getElementById('office-lock-overlay').style.display='block';
+  }
+}
+
+function officePinPress(k){
+  if(k==='⌫') officePinEntry=officePinEntry.slice(0,-1);
+  else if(officePinEntry.length<4) officePinEntry+=k;
+  updateOfficePinDots();
+  if(officePinEntry.length===4) checkOfficePin();
+}
+
+function updateOfficePinDots(){
+  for(let i=1;i<=4;i++){
+    const d=document.getElementById('opd'+i);
+    d.style.background = i<=officePinEntry.length?'var(--amber)':'transparent';
+    d.style.borderColor= i<=officePinEntry.length?'var(--amber)':'var(--slate)';
+  }
+}
+
+function checkOfficePin(){
+  if(officePinEntry===getMaheshPin()){
+    officeUnlocked=true;
+    document.getElementById('office-lock-overlay').style.display='none';
+    ['tab-dcinward','tab-recon'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){el.classList.add('unlocked');el.textContent=el.textContent.replace(' 🔒','');}
+    });
+    officePinEntry='';updateOfficePinDots();
+    switchTab(pendingOfficeTab);
+  } else {
+    document.getElementById('officePinError').textContent='❌ Wrong PIN — try again';
+    setTimeout(()=>{officePinEntry='';updateOfficePinDots();document.getElementById('officePinError').textContent='';},1200);
+  }
+}
+
+function closeOfficeLock(){
+  document.getElementById('office-lock-overlay').style.display='none';
+  officePinEntry='';updateOfficePinDots();
+}
+
 function switchTab(t){
   ['log','dashboard','toolchange','morning','dcinward','outward','recon','settings'].forEach(p=>{
     document.getElementById('pane-'+p).classList.toggle('active',p===t);
     document.getElementById('tab-'+p).classList.toggle('active',p===t);
   });
-  if(t!=='settings'){lockSettings();}
+  if(t!=='settings') lockSettings();
   if(t==='dashboard')  renderDashboard();
   if(t==='toolchange') initToolChangeTab();
   if(t==='dcinward')   initDCInward();
@@ -2632,6 +2733,20 @@ function switchTab(t){
     document.getElementById('supervisorContent').style.display='none';
     document.getElementById('settingsContent').style.display='none';
   }
+}
+
+// ═══════════════════════════════════════════
+// CLEAR ALL TEST DATA
+// ═══════════════════════════════════════════
+function clearAllTestData(){
+  if(!confirm('⚠️ DELETE ALL TEST DATA?\n\nThis will permanently remove:\n• All shift logs\n• All tool change entries\n• All DC Inward entries\n• All tool outward entries\n• All reconditioning entries\n\nThis cannot be undone. Are you sure?')) return;
+  if(!confirm('Second confirmation — DELETE ALL DATA NOW?')) return;
+  ['atf_cpc_logs','atf_tc_logs','atf_dc_logs','atf_out_logs','atf_recon_logs'].forEach(key=>{
+    localStorage.removeItem(key);
+  });
+  logs=[];toolChangeLogs=[];dcLogs=[];outLogs=[];reconLogs=[];
+  showToast('✅ All test data cleared — fresh start','ok');
+  renderDashboard();
 }
 
 function renderSettings(){
