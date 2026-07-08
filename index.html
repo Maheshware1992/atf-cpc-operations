@@ -227,8 +227,9 @@ select option{background:var(--steel);color:var(--white)}
   <button class="tab"        onclick="switchTab('toolchange')" id="tab-toolchange">🔧 Tool Change</button>
   <button class="tab"        onclick="switchTab('morning')"   id="tab-morning">☀️ Morning</button>
   <button class="tab"        onclick="switchTab('outward')"   id="tab-outward">🔄 Outward</button>
-  <button class="tab office-tab" onclick="handleOfficeTab('dcinward')"  id="tab-dcinward" title="Office Staff Only">📦 DC In 🔒</button>
-  <button class="tab office-tab" onclick="handleOfficeTab('recon')"     id="tab-recon"    title="Office Staff Only">♻️ Recon 🔒</button>
+  <button class="tab office-tab" onclick="handleOfficeTab('inventory')" id="tab-inventory" title="Office Staff Only">📊 Stock 🔒</button>
+  <button class="tab office-tab" onclick="handleOfficeTab('dcinward')"  id="tab-dcinward"  title="Office Staff Only">📦 DC In 🔒</button>
+  <button class="tab office-tab" onclick="handleOfficeTab('recon')"     id="tab-recon"     title="Office Staff Only">♻️ Recon 🔒</button>
   <button class="tab"        onclick="switchTab('settings')"  id="tab-settings">⚙️</button>
 </div>
 
@@ -578,6 +579,102 @@ select option{background:var(--steel);color:var(--white)}
     <button onclick="closeOfficeLock()" style="padding:10px 24px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">✕ Cancel</button>
   </div>
 </div>
+
+<!-- ════ INVENTORY ════ -->
+<div id="pane-inventory" class="pane">
+
+  <!-- Alert banner — shown when any tool below minimum -->
+  <div id="inv-alert-banner" style="display:none;background:rgba(239,68,68,.12);border:1.5px solid rgba(239,68,68,.4);border-radius:var(--r);padding:10px 13px;margin-bottom:12px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--red);margin-bottom:4px">🚨 LOW STOCK ALERT</div>
+    <div id="inv-alert-list" style="font-size:11px;color:#fca5a5;line-height:1.8"></div>
+    <div style="display:flex;gap:7px;margin-top:9px">
+      <button onclick="sendLowStockAlert('teams')" style="flex:1;padding:8px;background:linear-gradient(135deg,#3730a3,#4f46e5);border:none;border-radius:var(--r);color:#fff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer">🏢 Copy Teams Alert</button>
+      <button onclick="sendLowStockAlert('email')" style="flex:1;padding:8px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:var(--r);color:#fff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📧 Send Email Alert</button>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
+    <select id="inv-comp-filter" onchange="renderInventory()" style="flex:1;background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none;min-width:120px">
+      <option value="">All Components</option>
+      <option>A506 Body</option><option>A506 Cover</option>
+      <option>A897 Body</option><option>A897 Shaft</option>
+      <option>A944</option><option>B128</option>
+      <option>B487</option><option>B493</option>
+    </select>
+    <select id="inv-site-filter" onchange="renderInventory()" style="flex:1;background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none;min-width:100px">
+      <option value="">All Locations</option>
+      <option value="office">ATF Office</option>
+      <option value="site1">Advik P15</option>
+      <option value="site2">Advik P44</option>
+      <option value="vendor">At Vendor</option>
+    </select>
+    <select id="inv-status-filter" onchange="renderInventory()" style="flex:1;background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none;min-width:100px">
+      <option value="">All Status</option>
+      <option value="critical">🔴 Critical</option>
+      <option value="low">🟡 Low</option>
+      <option value="ok">🟢 OK</option>
+    </select>
+  </div>
+
+  <!-- Summary strip -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px" id="inv-summary-strip">
+  </div>
+
+  <!-- Inventory table -->
+  <div id="inv-table-container" style="overflow-x:auto">
+    <div class="empty"><div class="empty-icon">📦</div><p>Loading inventory...</p></div>
+  </div>
+
+  <!-- Opening balance entry modal -->
+  <div id="inv-ob-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:600;overflow-y:auto">
+    <div style="max-width:420px;margin:40px auto;padding:16px">
+      <div class="card">
+        <div class="card-hdr"><span class="ch-icon">📦</span><span class="ch-title" id="inv-ob-title">SET OPENING BALANCE</span></div>
+        <div class="card-body">
+          <div style="font-size:11px;color:var(--fog);margin-bottom:12px;line-height:1.6">Enter current physical stock count for this tool at each location.</div>
+          <div id="inv-ob-tool-info" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:9px 11px;margin-bottom:12px;font-size:11px;color:var(--amber);line-height:1.7"></div>
+
+          <div style="font-size:10px;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📦 Physical Stock Count</div>
+          <div class="frow">
+            <div class="fg"><label>ATF Office (pcs)</label><input type="number" id="ob-office" min="0" value="0" placeholder="0"/></div>
+            <div class="fg"><label>Advik P15 — Site 1 (pcs)</label><input type="number" id="ob-site1" min="0" value="0" placeholder="0"/></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label>Advik P44 — Site 2 (pcs)</label><input type="number" id="ob-site2" min="0" value="0" placeholder="0"/></div>
+            <div class="fg"><label>At Vendor / Reconditioning (pcs)</label><input type="number" id="ob-vendor" min="0" value="0" placeholder="0"/></div>
+          </div>
+
+          <div style="font-size:10px;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 8px">⚠️ Alert Thresholds</div>
+          <div class="frow">
+            <div class="fg">
+              <label>Minimum Level (pcs) <span style="font-size:9px;color:var(--fog)">— alert below this</span></label>
+              <input type="number" id="ob-min" min="0" value="0" placeholder="0" style="border-color:rgba(239,68,68,.4)"/>
+            </div>
+            <div class="fg">
+              <label>Maximum Level (pcs) <span style="font-size:9px;color:var(--fog)">— do not over-stock</span></label>
+              <input type="number" id="ob-max" min="0" value="0" placeholder="0" style="border-color:rgba(16,185,129,.3)"/>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fg">
+              <label>Tool Type</label>
+              <select id="ob-type" style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+                <option value="reconditionable">♻️ Reconditionable (PCD reamers, SC endmills)</option>
+                <option value="onetime">1️⃣ One-time use (CBN, Taps, Inserts)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button onclick="saveOpeningBalance()" style="flex:2;padding:11px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;cursor:pointer">💾 SAVE BALANCE</button>
+            <button onclick="closeOBModal()" style="flex:1;padding:11px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /pane-inventory -->
 
 <!-- ════ DC INWARD ════ -->
 <div id="pane-dcinward" class="pane">
@@ -950,154 +1047,107 @@ select option{background:var(--steel);color:var(--white)}
       <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Google Apps Script Code</div>
       <div style="font-size:10px;color:var(--fog);margin-bottom:7px;line-height:1.6">Go to <strong style="color:var(--mist)">script.google.com</strong> → New project → Paste → Deploy as Web App (Anyone) → Copy URL above</div>
       <div id="cpcScriptBox" style="background:#0d1117;border:1px solid var(--slate);border-radius:var(--r);padding:10px;font-family:'Courier New',monospace;font-size:9px;color:#93c5fd;line-height:1.7;white-space:pre;max-height:200px;overflow:auto">function doGet(e) {
-  // Read data for dashboard
-  var ss  = SpreadsheetApp.getActiveSpreadsheet();
-  var sh  = ss.getSheetByName('CPC_Raw_Logs');
-  if (!sh || sh.getLastRow() < 2) {
-    return ContentService
-      .createTextOutput(JSON.stringify({logs:[]}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  var date = e.parameter.date || '';
-  var site = e.parameter.site || '';
-  var rows = sh.getDataRange().getValues();
-  var headers = rows[0];
-  var logs = [];
-  for (var i = 1; i < rows.length; i++) {
-    var row = rows[i];
-    var obj = {};
-    headers.forEach(function(h, j) { obj[h] = row[j]; });
-    try { obj.machineData = JSON.parse(obj.machineData || '{}'); } catch(e){}
-    try { obj.compSummary = JSON.parse(obj.compSummary || '{}'); } catch(e){}
-    try { obj.toolChanges = JSON.parse(obj.toolChanges || '[]'); } catch(e){}
-    if ((!date || obj.date === date) && (!site || obj.site === site)) {
-      logs.push(obj);
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var type=e.parameter.type||'shifts';
+  var date=e.parameter.date||'';
+  var site=e.parameter.site||'';
+  var month=e.parameter.month||'';
+  var year=e.parameter.year||'';
+  if(type==='shifts')      return getSheet(ss,'CPC_Raw_Logs',date,site,month,year,1,2);
+  if(type==='toolchanges') return getSheet(ss,'CPC_Tool_Changes',date,site,month,year,0,1);
+  if(type==='outward')     return getSheet(ss,'CPC_Tool_Outward',date,site,month,year,0,1);
+  if(type==='dcinward')    return getSheet(ss,'CPC_DC_Inward',date,site,month,year,0,1);
+  if(type==='recon')       return getSheet(ss,'CPC_Reconditioning','','',month,year,1,2);
+  return out([]);
+}
+function getSheet(ss,name,date,site,month,year,dc,sc){
+  var sh=ss.getSheetByName(name);
+  if(!sh||sh.getLastRow()<2) return out([]);
+  var rows=sh.getDataRange().getValues();
+  var hdrs=rows[0]; var res=[];
+  for(var i=1;i<rows.length;i++){
+    var row=rows[i]; var obj={};
+    hdrs.forEach(function(h,j){obj[h]=row[j];});
+    var rd=row[dc]?new Date(row[dc]):null;
+    if(date&&rd){var d=new Date(date);if(rd.toDateString()!==d.toDateString())continue;}
+    if(month&&rd&&(rd.getMonth()+1)!==parseInt(month))continue;
+    if(year&&rd&&rd.getFullYear()!==parseInt(year))continue;
+    if(site&&row[sc]&&!String(row[sc]).toLowerCase().includes(site))continue;
+    if(name==='CPC_Raw_Logs'){
+      try{obj.machineData=JSON.parse(obj.machineData||'{}');}catch(e){}
+      try{obj.compSummary=JSON.parse(obj.compSummary||'{}');}catch(e){}
+      try{obj.toolChanges=JSON.parse(obj.toolChanges||'[]');}catch(e){}
     }
+    res.push(obj);
   }
-  return ContentService
-    .createTextOutput(JSON.stringify({logs:logs}))
+  return out(res);
+}
+function out(data){
+  return ContentService.createTextOutput(JSON.stringify({rows:data}))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var d  = JSON.parse(e.postData.contents);
-
-  // Raw log sheet — stores complete JSON for dashboard reading
-  var raw = ss.getSheetByName('CPC_Raw_Logs')
-    || ss.insertSheet('CPC_Raw_Logs');
-  if (raw.getLastRow() === 0) {
-    raw.appendRow(['id','date','site','siteName','shift',
-      'supervisor','totalProduction','totalRejection',
-      'rejectionPct','machineData','compSummary',
-      'toolChanges','shiftNotes','loggedAt']);
-    raw.getRange(1,1,1,14).setFontWeight('bold')
-      .setBackground('#1c2936').setFontColor('#ffffff');
-    raw.setFrozenRows(1);
-  }
-  if (d.type === 'CPC_SHIFT_LOG') {
-    raw.appendRow([
-      d.id, d.date, d.site, d.siteName, d.shift,
-      d.supervisor, d.totalProduction, d.totalRejection,
-      d.rejectionPct,
-      JSON.stringify(d.machineData||{}),
-      JSON.stringify(d.compSummary||{}),
-      JSON.stringify(d.toolChanges||[]),
-      d.shiftNotes||'',
-      new Date().toLocaleString('en-IN')
-    ]);
-    logShiftSummary(ss, d);
-    logMachineDetail(ss, d);
-  }
-  if (d.type === 'TOOL_CHANGE') {
-    logToolChange(ss, d);
-  }
-
-  return ContentService
-    .createTextOutput(JSON.stringify({status:'ok'}))
+function doPost(e){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var d=JSON.parse(e.postData.contents);
+  if(d.type==='CONNECTION_TEST') return out({status:'ok'});
+  if(d.type==='CPC_SHIFT_LOG'){logRaw(ss,d);logShift(ss,d);logMachine(ss,d);}
+  if(d.type==='TOOL_CHANGE')   logToolChange(ss,d);
+  if(d.type==='DC_INWARD')     logDCInward(ss,d);
+  if(d.type==='TOOL_OUTWARD')  logOutward(ss,d);
+  if(d.type==='RECON_SEND')    logReconSend(ss,d);
+  if(d.type==='RECON_RECEIVE') logReconReceive(ss,d);
+  return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-function logShiftSummary(ss, d) {
-  var sh = ss.getSheetByName('CPC_Shift_Log')
-    || ss.insertSheet('CPC_Shift_Log');
-  if (sh.getLastRow() === 0) {
-    sh.appendRow(['Date','Site','Shift','Supervisor',
-      'Total Production','Total Rejection',
-      'Rejection %','Tool Changes','Shift Notes','Logged At']);
-    formatHeader(sh, 10);
-  }
-  sh.appendRow([d.date, d.siteName, d.shift, d.supervisor,
-    d.totalProduction, d.totalRejection, d.rejectionPct,
-    d.toolChanges ? d.toolChanges.length : 0,
-    d.shiftNotes||'', new Date().toLocaleString('en-IN')]);
+function logRaw(ss,d){
+  var sh=ss.getSheetByName('CPC_Raw_Logs')||ss.insertSheet('CPC_Raw_Logs');
+  if(sh.getLastRow()===0){sh.appendRow(['id','date','site','siteName','shift','supervisor','totalProduction','totalRejection','rejectionPct','machineData','compSummary','toolChanges','shiftNotes','loggedAt']);fmt(sh,14);}
+  sh.appendRow([d.id,d.date,d.site,d.siteName,d.shift,d.supervisor,d.totalProduction,d.totalRejection,d.rejectionPct,JSON.stringify(d.machineData||{}),JSON.stringify(d.compSummary||{}),JSON.stringify(d.toolChanges||[]),d.shiftNotes||'',new Date().toLocaleString('en-IN')]);
 }
-
-function logMachineDetail(ss, d) {
-  var ms = ss.getSheetByName('CPC_Machine_Detail')
-    || ss.insertSheet('CPC_Machine_Detail');
-  if (ms.getLastRow() === 0) {
-    ms.appendRow(['Date','Site','Shift','Supervisor',
-      'Machine','Component','Production',
-      'Rejection','Rejection %','Remarks']);
-    formatHeader(ms, 10);
-  }
-  var md = d.machineData || {};
-  Object.keys(md).forEach(function(mc) {
-    var m = md[mc];
-    if (!m.production) return;
-    var pct = m.production > 0
-      ? ((m.rejection||0)/m.production*100).toFixed(2) : 0;
-    ms.appendRow([d.date, d.siteName, d.shift, d.supervisor,
-      mc, m.component||'', m.production, m.rejection||0,
-      pct, m.remarks||'']);
-  });
+function logShift(ss,d){
+  var sh=ss.getSheetByName('CPC_Shift_Log')||ss.insertSheet('CPC_Shift_Log');
+  if(sh.getLastRow()===0){sh.appendRow(['Date','Site','Shift','Supervisor','Total Production','Total Rejection','Rejection %','Tool Changes','Shift Notes','Logged At']);fmt(sh,10);}
+  sh.appendRow([d.date,d.siteName,d.shift,d.supervisor,d.totalProduction,d.totalRejection,d.rejectionPct,d.toolChanges?d.toolChanges.length:0,d.shiftNotes||'',new Date().toLocaleString('en-IN')]);
 }
-
-function logToolChange(ss, d) {
-  var ts = ss.getSheetByName('CPC_Tool_Changes')
-    || ss.insertSheet('CPC_Tool_Changes');
-  if (ts.getLastRow() === 0) {
-    ts.appendRow(['Date','Site','Shift','Supervisor',
-      'Component','Machine','SAP Code','Tool Name',
-      'Operation','Make','Standard Life (pcs)',
-      'Life Achieved (pcs)','% of Standard',
-      'Change Reason','New Tool Fitted','Remarks','Logged At']);
-    formatHeader(ts, 17);
-  }
-  if (d.toolCode) {
-    var pct = d.stdLife > 0
-      ? Math.round(d.lifeAchieved/d.stdLife*100) : '';
-    ts.appendRow([d.date, d.siteName, d.shift, d.supervisor,
-      d.comp, d.machine, d.toolCode, d.toolName,
-      d.operation, d.make, d.stdLife||'', d.lifeAchieved||'',
-      pct, d.changeReason, d.newToolFitted||'',
-      d.remarks||'', new Date().toLocaleString('en-IN')]);
-    return;
-  }
-  (d.toolChanges||[]).forEach(function(tc) {
-    var pct = tc.stdLife > 0
-      ? Math.round(tc.lifeAchieved/tc.stdLife*100) : '';
-    ts.appendRow([d.date, d.siteName, d.shift, d.supervisor,
-      tc.comp||'', tc.machine, tc.toolCode||'', tc.toolName||'',
-      tc.operation||'', tc.make||'', tc.stdLife||'',
-      tc.lifeAchieved||'', pct, tc.changeReason,
-      tc.newToolFitted||'', tc.remarks||'',
-      new Date().toLocaleString('en-IN')]);
-  });
+function logMachine(ss,d){
+  var sh=ss.getSheetByName('CPC_Machine_Detail')||ss.insertSheet('CPC_Machine_Detail');
+  if(sh.getLastRow()===0){sh.appendRow(['Date','Site','Shift','Supervisor','Machine','Component','Production','Rejection','Rejection %','Remarks']);fmt(sh,10);}
+  var md=d.machineData||{};
+  Object.keys(md).forEach(function(mc){var m=md[mc];if(!m.production)return;var pct=m.production>0?((m.rejection||0)/m.production*100).toFixed(2):0;sh.appendRow([d.date,d.siteName,d.shift,d.supervisor,mc,m.component||'',m.production,m.rejection||0,pct,m.remarks||'']);});
 }
-
-function formatHeader(sheet, cols) {
-  sheet.getRange(1,1,1,cols).setFontWeight('bold')
-    .setBackground('#1c2936').setFontColor('#ffffff');
-  sheet.setFrozenRows(1);
-}</div>
+function logToolChange(ss,d){
+  var sh=ss.getSheetByName('CPC_Tool_Changes')||ss.insertSheet('CPC_Tool_Changes');
+  if(sh.getLastRow()===0){sh.appendRow(['Date','Site','Shift','Supervisor','Component','Machine','SAP Code','Tool Name','Operation','Make','Std Life','Life Achieved','% of Std','Change Reason','New Tool','Coating Required','Remarks','Logged At']);fmt(sh,18);}
+  var pct=d.stdLife>0?Math.round(d.lifeAchieved/d.stdLife*100):'';
+  sh.appendRow([d.date,d.siteName,d.shift,d.supervisor,d.comp,d.machine,d.toolCode,d.toolName,d.operation||'',d.make||'',d.stdLife||'',d.lifeAchieved||'',pct,d.changeReason,d.newToolFitted||'',d.coatingRequired?'Yes':'No',d.remarks||'',new Date().toLocaleString('en-IN')]);
+}
+function logDCInward(ss,d){
+  var sh=ss.getSheetByName('CPC_DC_Inward')||ss.insertSheet('CPC_DC_Inward');
+  if(sh.getLastRow()===0){sh.appendRow(['Date','DC Number','Site','Received By','Component','SAP Code','Tool Name','Make','Qty','Unit Price','Line Total','DC Total','Coating Required','Remarks','Logged At']);fmt(sh,15);}
+  (d.items||[]).forEach(function(item){sh.appendRow([d.date,d.dcNo,d.siteName,d.supervisor,item.component||'',item.toolCode||'',item.name||'',item.make||'',item.qty||0,item.unitPrice||0,(item.qty||0)*(item.unitPrice||0),d.totalValue||0,item.coatingRequired?'Yes':'No',d.remarks||'',new Date().toLocaleString('en-IN')]);});
+}
+function logOutward(ss,d){
+  var sh=ss.getSheetByName('CPC_Tool_Outward')||ss.insertSheet('CPC_Tool_Outward');
+  if(sh.getLastRow()===0){sh.appendRow(['Date','DC Number','Site','Supervisor','Outward Reason','Component','SAP Code','Qty','Condition','Coating Required','Remarks','Logged At']);fmt(sh,12);}
+  (d.items||[]).forEach(function(item){sh.appendRow([d.date,d.dcNo||'',d.siteName,d.supervisor,d.reason,item.component||'',item.toolCode||'',item.qty||0,item.condition||'',item.coatingRequired?'Yes':'No',d.remarks||'',new Date().toLocaleString('en-IN')]);});
+}
+function logReconSend(ss,d){
+  var sh=ss.getSheetByName('CPC_Reconditioning')||ss.insertSheet('CPC_Reconditioning');
+  if(sh.getLastRow()===0){sh.appendRow(['Entry ID','Date Sent','Vendor','Service Type','Site','Outward DC No','Tally DC No','Component','SAP Code','Tool Name','Qty Sent','Coating Required','New Tool Cost','Expected Return','Status','Date Received','Recon Cost','Savings','Remarks','Logged At']);fmt(sh,20);}
+  (d.items||[]).forEach(function(item){sh.appendRow([d.id,d.date,d.vendor,d.serviceType||'',d.siteName,d.outwardDcNo||'',d.tallyDC||'',item.component||'',item.toolCode||'',item.name||'',item.qty||0,item.coatingRequired?'Yes':'No',(item.qty||0)*(item.unitPrice||0),d.expectedReturn||'','Pending','','','',d.remarks||'',new Date().toLocaleString('en-IN')]);});
+}
+function logReconReceive(ss,d){
+  var sh=ss.getSheetByName('CPC_Reconditioning');if(!sh)return;
+  var data=sh.getDataRange().getValues();
+  for(var i=1;i<data.length;i++){if(String(data[i][0])===String(d.id)){sh.getRange(i+1,15).setValue('Received');sh.getRange(i+1,16).setValue(d.receivedDate||'');sh.getRange(i+1,17).setValue(d.reconCost||0);sh.getRange(i+1,18).setValue(d.savings||0);}}
+}
+function fmt(sheet,cols){sheet.getRange(1,1,1,cols).setFontWeight('bold').setBackground('#1c2936').setFontColor('#ffffff');sheet.setFrozenRows(1);}</div>
       <button onclick="copyCPCScript()" style="width:100%;margin-top:7px;padding:8px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer">📋 Copy Script</button>
       <div style="margin-top:10px;padding:9px 11px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--r);font-size:11px;color:#6ee7b7;line-height:1.6">
-        <strong style="color:var(--green);display:block;margin-bottom:2px">3 sheets auto-created in your Google Sheet:</strong>
-        📋 CPC_Shift_Log — one row per shift submitted<br/>
-        ⚙️ CPC_Machine_Detail — one row per machine per shift<br/>
-        🔧 CPC_Tool_Changes — one row per tool change
+        <strong style="color:var(--green);display:block;margin-bottom:2px">7 sheets auto-created in your Google Sheet:</strong>
+        📋 CPC_Shift_Log · CPC_Machine_Detail · CPC_Raw_Logs<br/>
+        🔧 CPC_Tool_Changes · 📦 CPC_DC_Inward<br/>
+        🔄 CPC_Tool_Outward · ♻️ CPC_Reconditioning
       </div>
     </div>
   </div>
@@ -1839,14 +1889,19 @@ async function renderDashboard(){
 }
 
 async function renderDashboardFromSheets(){
-  // Fetch all logs from Google Sheets via read endpoint
-  const readUrl = cpcSettings.sheetsUrl.replace('/exec','/exec?action=read&date='+dashDate+'&site='+dashSite);
-  const resp = await fetch(readUrl,{method:'GET',mode:'cors'});
-  const data = await resp.json();
-  if(data && data.logs){
-    renderDashboardLocal(data.logs);
-  } else {
-    // Fallback to local
+  try{
+    const readUrl = cpcSettings.sheetsUrl + '?type=shifts&date=' + dashDate + '&site=' + dashSite;
+    const resp = await fetch(readUrl,{method:'GET',mode:'cors'});
+    const data = await resp.json();
+    // New script returns {rows:[]}, old returned {logs:[]}
+    const rows = data.rows || data.logs || null;
+    if(rows && rows.length){
+      renderDashboardLocal(rows);
+    } else {
+      renderDashboardLocal(logs);
+    }
+  }catch(e){
+    console.log('Dashboard Sheets fetch failed:',e);
     renderDashboardLocal(logs);
   }
 }
@@ -1943,11 +1998,11 @@ async function generateMorningSummary(){
   // Try to get all device data from Google Sheets
   if(cpcSettings.sheetsUrl){
     try{
-      const readUrl = cpcSettings.sheetsUrl.replace('/exec','/exec?action=read&date='+date);
+      const readUrl = cpcSettings.sheetsUrl + '?type=shifts&date=' + date;
       const resp = await fetch(readUrl,{method:'GET',mode:'cors'});
       const data = await resp.json();
-      if(data && data.logs && data.logs.length > 0){
-        allLogs = data.logs;
+      if(data && (data.rows||data.logs) && (data.rows||data.logs).length > 0){
+        allLogs = data.rows || data.logs;
       }
     }catch(e){ /* use local */ }
   }
@@ -2736,7 +2791,7 @@ function checkOfficePin(){
   if(officePinEntry===getOfficePin()||officePinEntry===getMaheshPin()){
     officeUnlocked=true;
     document.getElementById('office-lock-overlay').style.display='none';
-    ['tab-dcinward','tab-recon'].forEach(id=>{
+    ['tab-dcinward','tab-recon','tab-inventory'].forEach(id=>{
       const el=document.getElementById(id);
       if(el){el.classList.add('unlocked');el.textContent=el.textContent.replace(' 🔒','');}
     });
@@ -2754,21 +2809,20 @@ function closeOfficeLock(){
 }
 
 function switchTab(t){
-  ['log','dashboard','toolchange','morning','dcinward','outward','recon','settings'].forEach(p=>{
+  ['log','dashboard','toolchange','morning','inventory','dcinward','outward','recon','settings'].forEach(p=>{
     const pane=document.getElementById('pane-'+p);
     const tab=document.getElementById('tab-'+p);
     if(pane) pane.classList.toggle('active',p===t);
     if(tab)  tab.classList.toggle('active',p===t);
   });
-  // Only lock settings when navigating AWAY from it
   if(t!=='settings' && settingsUnlocked) lockSettings();
   if(t==='dashboard')  renderDashboard();
   if(t==='toolchange') initToolChangeTab();
   if(t==='dcinward')   initDCInward();
   if(t==='outward')    initOutward();
   if(t==='recon')      initRecon();
+  if(t==='inventory')  initInventory();
   if(t==='settings'){
-    // Only reset if not already showing lock
     const lockEl=document.getElementById('settingsLock');
     if(lockEl && !settingsUnlocked){
       lockEl.style.display='block';
@@ -2784,13 +2838,13 @@ function switchTab(t){
 // CLEAR ALL TEST DATA
 // ═══════════════════════════════════════════
 function clearAllTestData(){
-  if(!confirm('⚠️ DELETE ALL TEST DATA?\n\nThis will permanently remove:\n• All shift logs\n• All tool change entries\n• All DC Inward entries\n• All tool outward entries\n• All reconditioning entries\n\nThis cannot be undone. Are you sure?')) return;
-  if(!confirm('Second confirmation — DELETE ALL DATA NOW?')) return;
+  if(!confirm('⚠️ DELETE ALL TEST DATA?\n\nThis will permanently remove:\n• All shift logs\n• All tool change entries\n• All DC Inward entries\n• All tool outward entries\n• All reconditioning entries\n\nNote: Opening balance & min/max settings are KEPT.\n\nThis cannot be undone. Are you sure?')) return;
+  if(!confirm('Second confirmation — DELETE ALL TRANSACTION DATA NOW?')) return;
   ['atf_cpc_logs','atf_tc_logs','atf_dc_logs','atf_out_logs','atf_recon_logs'].forEach(key=>{
     localStorage.removeItem(key);
   });
   logs=[];toolChangeLogs=[];dcLogs=[];outLogs=[];reconLogs=[];
-  showToast('✅ All test data cleared — fresh start','ok');
+  showToast('✅ All test data cleared — opening balances kept','ok');
   renderDashboard();
 }
 
@@ -3859,6 +3913,316 @@ async function renderReconHistory(){
       `<div style="font-size:10px;color:var(--fog)">New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}${r.expectedReturn?' · Expected: '+r.expectedReturn:''}</div>`}
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════
+// INVENTORY MODULE
+// ═══════════════════════════════════════════
+const ALERT_EMAILS = ['Purchase@accurate-tf.com','Prashant.hire@accurate-tf.com'];
+
+// Get inventory master — opening balances + min/max per SAP code
+function getInventoryMaster(){
+  return JSON.parse(localStorage.getItem('atf_inventory_master')||'{}');
+  // Structure: { 'CU01SC000237': { office:5, site1:3, site2:8, vendor:2, min:5, max:20, type:'reconditionable' } }
+}
+function saveInventoryMaster(data){
+  localStorage.setItem('atf_inventory_master',JSON.stringify(data));
+}
+
+// ── Calculate current stock for a tool code ──────────────
+function calcStock(code){
+  const master = getInventoryMaster();
+  const ob = master[code] || {office:0,site1:0,site2:0,vendor:0,min:0,max:0,type:'onetime'};
+
+  // Start with opening balance
+  let office=parseInt(ob.office)||0;
+  let site1=parseInt(ob.site1)||0;
+  let site2=parseInt(ob.site2)||0;
+  let vendor=parseInt(ob.vendor)||0;
+
+  // + DC Inward (tools arriving at site from office)
+  dcLogs.forEach(dc=>{
+    (dc.items||[]).forEach(item=>{
+      if(item.toolCode!==code) return;
+      const qty=parseInt(item.qty)||0;
+      if(dc.site==='site1') site1+=qty;
+      else if(dc.site==='site2') site2+=qty;
+    });
+  });
+
+  // - Tool Changes consumed at site
+  toolChangeLogs.forEach(tc=>{
+    if(tc.toolCode!==code) return;
+    const qty=1; // each tool change = 1 tool consumed
+    if(tc.site==='site1') site1=Math.max(0,site1-qty);
+    else if(tc.site==='site2') site2=Math.max(0,site2-qty);
+  });
+
+  // - Tool Outward from site
+  outLogs.forEach(out=>{
+    (out.items||[]).forEach(item=>{
+      if(item.toolCode!==code) return;
+      const qty=parseInt(item.qty)||0;
+      if(out.reason==='worn'||out.reason==='broken'){
+        // Scrapped — just reduce site stock
+        if(out.site==='site1') site1=Math.max(0,site1-qty);
+        else if(out.site==='site2') site2=Math.max(0,site2-qty);
+      } else if(out.reason==='reconditioning'||out.reason==='return'){
+        // Sent back to office/vendor
+        if(out.site==='site1') site1=Math.max(0,site1-qty);
+        else if(out.site==='site2') site2=Math.max(0,site2-qty);
+        if(out.reason==='reconditioning') vendor+=qty;
+        else office+=qty;
+      }
+    });
+  });
+
+  // Reconditioning: sent to vendor → received back
+  reconLogs.forEach(r=>{
+    (r.items||[]).forEach(item=>{
+      if(item.toolCode!==code) return;
+      const qty=parseInt(item.qty)||0;
+      if(r.status==='received'){
+        // Returned from vendor → back to office
+        vendor=Math.max(0,vendor-qty);
+        office+=qty;
+      }
+    });
+  });
+
+  const total=office+site1+site2+vendor;
+  const min=parseInt(ob.min)||0;
+  const max=parseInt(ob.max)||0;
+  let status='ok';
+  if(min>0 && total===0) status='critical';
+  else if(min>0 && total<=min) status='low';
+  else if(max>0 && total>max) status='overstock';
+
+  return {office,site1,site2,vendor,total,min,max,type:ob.type||'onetime',status};
+}
+
+// ── Init inventory tab ──────────────────────────────────
+function initInventory(){
+  renderInventory();
+  checkLowStockAlerts();
+}
+
+// ── Render inventory table ──────────────────────────────
+function renderInventory(){
+  const compFilter  = document.getElementById('inv-comp-filter')?.value||'';
+  const siteFilter  = document.getElementById('inv-site-filter')?.value||'';
+  const statusFilter= document.getElementById('inv-status-filter')?.value||'';
+  const master      = getInventoryMaster();
+  const toolData    = getToolCodes();
+
+  // Build flat list of all tools
+  let allTools=[];
+  Object.entries(toolData).forEach(([comp,tools])=>{
+    tools.forEach(t=>{
+      if(compFilter && comp!==compFilter) return;
+      const stock = calcStock(t.code);
+      if(siteFilter && stock[siteFilter]===undefined) return;
+      if(statusFilter && stock.status!==statusFilter) return;
+      allTools.push({...t, comp, stock});
+    });
+  });
+
+  // Summary strip
+  const total=allTools.length;
+  const critical=allTools.filter(t=>t.stock.status==='critical').length;
+  const low=allTools.filter(t=>t.stock.status==='low').length;
+  const configured=allTools.filter(t=>(master[t.code]?.min||0)>0).length;
+  document.getElementById('inv-summary-strip').innerHTML=`
+    <div style="background:var(--steel);border:1px solid var(--iron);border-radius:var(--r);padding:9px;text-align:center">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--white)">${total}</div>
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase">Total Tools</div>
+    </div>
+    <div style="background:${critical>0?'rgba(239,68,68,.1)':'var(--steel)'};border:1px solid ${critical>0?'rgba(239,68,68,.3)':'var(--iron)'};border-radius:var(--r);padding:9px;text-align:center">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${critical>0?'var(--red)':'var(--fog)'}">${critical}</div>
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase">🔴 Critical</div>
+    </div>
+    <div style="background:${low>0?'rgba(245,158,11,.08)':'var(--steel)'};border:1px solid ${low>0?'rgba(245,158,11,.3)':'var(--iron)'};border-radius:var(--r);padding:9px;text-align:center">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${low>0?'var(--amber)':'var(--fog)'}">${low}</div>
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase">🟡 Low Stock</div>
+    </div>
+    <div style="background:var(--steel);border:1px solid var(--iron);border-radius:var(--r);padding:9px;text-align:center">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green)">${configured}</div>
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase">Min Set</div>
+    </div>`;
+
+  if(!allTools.length){
+    document.getElementById('inv-table-container').innerHTML='<div class="empty"><div class="empty-icon">📦</div><p>No tools match filter.</p></div>';
+    return;
+  }
+
+  // Sort: critical first, then low, then ok
+  allTools.sort((a,b)=>{
+    const order={critical:0,low:1,overstock:2,ok:3};
+    return (order[a.stock.status]||3)-(order[b.stock.status]||3);
+  });
+
+  const html=`<table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead>
+      <tr style="background:var(--iron)">
+        <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">SAP Code / Tool</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Office</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">P15</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">P44</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Vendor</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Total</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--red);text-transform:uppercase">Min</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--green);text-transform:uppercase">Max</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Status</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Edit</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${allTools.map(t=>{
+        const s=t.stock;
+        const statusColor={critical:'var(--red)',low:'var(--amber)',ok:'var(--green)',overstock:'var(--blue)'}[s.status]||'var(--fog)';
+        const statusLabel={critical:'🔴 Critical',low:'🟡 Low',ok:'🟢 OK',overstock:'🔵 Over'}[s.status]||'—';
+        const rowBg=s.status==='critical'?'rgba(239,68,68,.05)':s.status==='low'?'rgba(245,158,11,.04)':'';
+        const minSet=s.min>0;
+        return`<tr style="background:${rowBg};border-bottom:1px solid rgba(255,255,255,.04)" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${rowBg}'">
+          <td style="padding:8px 10px">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${needsCoating(t.code)?'var(--amber)':'var(--mist)'}">${t.code}${needsCoating(t.code)?' 🎨':''}</div>
+            <div style="font-size:10px;color:var(--fog);margin-top:1px">${t.comp} · ${t.name?.substring(0,30)||''}</div>
+          </td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;color:var(--white)">${s.office}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;color:var(--white)">${s.site1}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;color:var(--white)">${s.site2}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;color:#c4b5fd">${s.vendor}</td>
+          <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor}">${s.total}</td>
+          <td style="padding:8px 6px;text-align:center;color:var(--red);font-weight:600">${minSet?s.min:'—'}</td>
+          <td style="padding:8px 6px;text-align:center;color:var(--green);font-weight:600">${s.max>0?s.max:'—'}</td>
+          <td style="padding:8px 6px;text-align:center"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${statusColor}22;color:${statusColor};font-weight:700">${statusLabel}</span></td>
+          <td style="padding:8px 6px;text-align:center">
+            <button onclick="openOBModal('${t.code}','${t.name?.replace(/'/g,'')}')" style="background:none;border:1px solid var(--slate);border-radius:5px;color:var(--fog);cursor:pointer;font-size:10px;padding:3px 7px">✏️</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+  document.getElementById('inv-table-container').innerHTML=html;
+}
+
+// ── Opening balance modal ───────────────────────────────
+let _currentOBCode='';
+function openOBModal(code, name){
+  _currentOBCode=code;
+  const master=getInventoryMaster();
+  const ob=master[code]||{office:0,site1:0,site2:0,vendor:0,min:0,max:0,type:'onetime'};
+  const price=getToolPrice(code);
+  document.getElementById('inv-ob-title').textContent='EDIT STOCK — '+code;
+  document.getElementById('inv-ob-tool-info').innerHTML=`
+    <strong>${code}</strong> — ${name}<br/>
+    Make: ${getToolCodes()[Object.keys(getToolCodes()).find(k=>getToolCodes()[k].find(t=>t.code===code))||'']?.find(t=>t.code===code)?.make||'—'} &nbsp;|&nbsp;
+    Unit Price: ₹${price>0?price.toLocaleString('en-IN'):'Not set'} &nbsp;|&nbsp;
+    Coating: ${needsCoating(code)?'🎨 Yes':'No'}`;
+  document.getElementById('ob-office').value=ob.office||0;
+  document.getElementById('ob-site1').value=ob.site1||0;
+  document.getElementById('ob-site2').value=ob.site2||0;
+  document.getElementById('ob-vendor').value=ob.vendor||0;
+  document.getElementById('ob-min').value=ob.min||0;
+  document.getElementById('ob-max').value=ob.max||0;
+  document.getElementById('ob-type').value=ob.type||'onetime';
+  document.getElementById('inv-ob-modal').style.display='block';
+}
+
+function closeOBModal(){
+  document.getElementById('inv-ob-modal').style.display='none';
+  _currentOBCode='';
+}
+
+function saveOpeningBalance(){
+  if(!_currentOBCode){showToast('No tool selected','err');return;}
+  const master=getInventoryMaster();
+  master[_currentOBCode]={
+    office:parseInt(document.getElementById('ob-office').value)||0,
+    site1:parseInt(document.getElementById('ob-site1').value)||0,
+    site2:parseInt(document.getElementById('ob-site2').value)||0,
+    vendor:parseInt(document.getElementById('ob-vendor').value)||0,
+    min:parseInt(document.getElementById('ob-min').value)||0,
+    max:parseInt(document.getElementById('ob-max').value)||0,
+    type:document.getElementById('ob-type').value||'onetime',
+    updatedAt:new Date().toISOString()
+  };
+  saveInventoryMaster(master);
+  closeOBModal();
+  renderInventory();
+  checkLowStockAlerts();
+  showToast('✅ Stock saved for '+_currentOBCode,'ok');
+}
+
+// ── Low stock alert system ──────────────────────────────
+function checkLowStockAlerts(){
+  const toolData=getToolCodes();
+  const alerts=[];
+  Object.entries(toolData).forEach(([comp,tools])=>{
+    tools.forEach(t=>{
+      const s=calcStock(t.code);
+      if(s.min>0 && s.total<=s.min){
+        alerts.push({code:t.code,name:t.name,comp,stock:s});
+      }
+    });
+  });
+
+  const banner=document.getElementById('inv-alert-banner');
+  const list=document.getElementById('inv-alert-list');
+  if(!banner||!list) return;
+
+  if(!alerts.length){banner.style.display='none';return;}
+  banner.style.display='block';
+  list.innerHTML=alerts.map(a=>{
+    const statusLabel=a.stock.status==='critical'?'🔴 CRITICAL — ZERO STOCK':'🟡 LOW STOCK';
+    return`${statusLabel}: <strong>${a.code}</strong> (${a.comp}) — Total: ${a.stock.total} pcs | Min: ${a.stock.min} pcs`;
+  }).join('<br/>');
+  window._lowStockAlerts=alerts;
+}
+
+function buildAlertMessage(){
+  const alerts=window._lowStockAlerts||[];
+  if(!alerts.length) return '';
+  const today=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  let msg=`🚨 ATF CPC — LOW STOCK ALERT\n📅 ${today}\n━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  const critical=alerts.filter(a=>a.stock.status==='critical');
+  const low=alerts.filter(a=>a.stock.status==='low');
+  if(critical.length){
+    msg+=`🔴 CRITICAL — ZERO STOCK (${critical.length} tools)\n`;
+    critical.forEach(a=>{
+      msg+=`• ${a.code} — ${a.name} (${a.comp})\n  Stock: ${a.stock.total} pcs | Min: ${a.stock.min} | Office: ${a.stock.office} | P15: ${a.stock.site1} | P44: ${a.stock.site2}\n`;
+    });
+    msg+='\n';
+  }
+  if(low.length){
+    msg+=`🟡 LOW STOCK (${low.length} tools)\n`;
+    low.forEach(a=>{
+      msg+=`• ${a.code} — ${a.name} (${a.comp})\n  Stock: ${a.stock.total} pcs | Min: ${a.stock.min} | Office: ${a.stock.office} | P15: ${a.stock.site1} | P44: ${a.stock.site2}\n`;
+    });
+  }
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n⚡ ACTION REQUIRED:\nPurchase Executive — raise PO for critical items immediately\nCPC Manager — check site stock and plan tool management\n━━━━━━━━━━━━━━━━━━━━━━━\nATF CPC Operations System`;
+  return msg;
+}
+
+function sendLowStockAlert(channel){
+  const msg=buildAlertMessage();
+  if(!msg){showToast('No alerts to send','err');return;}
+
+  if(channel==='teams'){
+    navigator.clipboard.writeText(msg).then(()=>{
+      showToast('📋 Copied — opening Teams...','ok');
+      setTimeout(()=>window.open(`https://teams.microsoft.com/l/chat/0/0?message=${encodeURIComponent(msg)}`,'_blank'),600);
+    });
+  }
+
+  if(channel==='email'){
+    const subject=encodeURIComponent('🚨 ATF CPC — Low Stock Alert — Action Required');
+    const body=encodeURIComponent(msg);
+    const to=ALERT_EMAILS.join(',');
+    // Open default email client with pre-filled details
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`,'_blank');
+    showToast('📧 Email draft opened','ok');
+  }
 }
 
 // ═══════════════════════════════════════════
