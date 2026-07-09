@@ -3086,6 +3086,98 @@ const COATING_REQUIRED = {
 function needsCoating(code){ return COATING_REQUIRED[code] === true; }
 
 // ═══════════════════════════════════════════
+// TOOL PLANNING DATA — imported from Mahesh Excel
+// Production plan, min/max, recon rotation all calculated
+// ═══════════════════════════════════════════
+const TOOL_PLANNING = {
+  'CU16AF01118S':{comp:'A897 Shaft',name:'DCGT11T304N-JS AH725 Insert',life:1500,prod:13000,monthlyCons:8.7,rotation:1.0,effNeed:8.7,leadWks:4.0,maxRecon:0,reconDays:0,minStock:11,maxStock:20,newOrderPm:9,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000050':{comp:'A897 Shaft',name:'VBGT110304FN-JS SH725 Insert',life:1800,prod:13000,monthlyCons:7.2,rotation:1.0,effNeed:7.2,leadWks:4.0,maxRecon:0,reconDays:0,minStock:9,maxStock:17,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000051':{comp:'A897 Shaft',name:'TDC 2 TT8020 Insert',life:5000,prod:13000,monthlyCons:2.6,rotation:1.0,effNeed:2.6,leadWks:4.0,maxRecon:0,reconDays:0,minStock:4,maxStock:7,newOrderPm:3,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01SC000257':{comp:'A897 Shaft',name:'Pilot Center Drill Ø2x5',life:7500,prod:13000,monthlyCons:1.7,rotation:4.0,effNeed:0.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:1765.0,avgReconCost:60.0,monthlyTotal:1765.0,monthlySaving:1765.0},
+  'CU01SC000258':{comp:'A897 Shaft',name:'SC Chamfer Tool D3.6',life:31125,prod:13000,monthlyCons:0.4,rotation:4.0,effNeed:0.1,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:1900.0,avgReconCost:60.0,monthlyTotal:1900.0,monthlySaving:0.0},
+  'CU01SC000259':{comp:'A897 Shaft',name:'SC Reamer Ø3.0',life:15000,prod:13000,monthlyCons:0.9,rotation:4.0,effNeed:0.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:1900.0,avgReconCost:60.0,monthlyTotal:1900.0,monthlySaving:0.0},
+  'CU03AB36702B':{comp:'B128',name:'PCD REAMER D29.95 4F',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:21211.0,avgReconCost:1625.0,monthlyTotal:21211.0,monthlySaving:0.0},
+  'CU01AC29902F':{comp:'B128',name:'SC STEP DRILL D5xD7',life:5000,prod:100000,monthlyCons:20.0,rotation:4.0,effNeed:5.0,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:3,maxStock:8,newOrderPm:2,reconQtyPm:3,newPrice:3006.0,avgReconCost:135.0,monthlyTotal:6416.0,monthlySaving:53704.0},
+  'CU02AA01001D':{comp:'A944',name:'TAP M6X1 6H TICN',life:50000,prod:70000,monthlyCons:1.4,rotation:1.0,effNeed:1.4,leadWks:1.0,maxRecon:0,reconDays:0,minStock:1,maxStock:3,newOrderPm:2,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01AC30002F':{comp:'B128',name:'SC DRILL D3',life:3333,prod:100000,monthlyCons:30.0,rotation:4.0,effNeed:7.5,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:5,maxStock:13,newOrderPm:2,reconQtyPm:6,newPrice:1800.0,avgReconCost:94.0,monthlyTotal:4166.0,monthlySaving:51634.0},
+  'CU04AA34402F':{comp:'B128',name:'SC BALL NOSE D13.5',life:100000,prod:100000,monthlyCons:1.0,rotation:4.0,effNeed:0.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:9000.0,avgReconCost:183.0,monthlyTotal:9000.0,monthlySaving:0.0},
+  'CU01AC30102F':{comp:'B128',name:'SC DRILL D7',life:35000,prod:100000,monthlyCons:2.9,rotation:4.0,effNeed:0.7,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:4500.0,avgReconCost:73.0,monthlyTotal:4500.0,monthlySaving:9000.0},
+  'CU01AF00913B':{comp:'B128',name:'SC DRILL D6x12.4',life:66667,prod:100000,monthlyCons:1.5,rotation:4.0,effNeed:0.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:5500.0,avgReconCost:60.0,monthlyTotal:5500.0,monthlySaving:5500.0},
+  'CU03AB37002B':{comp:'B128',name:'PCD REAMER D5.97',life:111111,prod:100000,monthlyCons:0.9,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:10500.0,avgReconCost:2000.0,monthlyTotal:10500.0,monthlySaving:0.0},
+  'CU03AB37202B':{comp:'B128',name:'PCD REAMER D8',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:11500.0,avgReconCost:2062.0,monthlyTotal:11500.0,monthlySaving:0.0},
+  'CU03AB57103B':{comp:'B128',name:'PCD OD TRIPPENING D15.5',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:28000.0,avgReconCost:4500.0,monthlyTotal:28000.0,monthlySaving:0.0},
+  'CU01AD09602F':{comp:'A897 Body',name:'SC DRILL D5xD6.5',life:15000,prod:15000,monthlyCons:1.0,rotation:4.0,effNeed:0.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:3000.0,avgReconCost:105.0,monthlyTotal:3000.0,monthlySaving:0.0},
+  'CU03AB37402B':{comp:'B128',name:'PCD REAMER D12.7',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:20025.0,avgReconCost:3112.0,monthlyTotal:20025.0,monthlySaving:0.0},
+  'CU03AB37302B':{comp:'B128',name:'PCD REAMER D20.98',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:23355.0,avgReconCost:4625.0,monthlyTotal:23355.0,monthlySaving:0.0},
+  'CU16AB00402B':{comp:'A897 Body',name:'INS CCGT 09T304 AL H10',life:15000,prod:15000,monthlyCons:1.0,rotation:1.0,effNeed:1.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU03AB37102B':{comp:'B128',name:'PCD REAMER D10.54',life:90000,prod:100000,monthlyCons:1.1,rotation:2.0,effNeed:0.6,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:18765.0,avgReconCost:3125.0,monthlyTotal:18765.0,monthlySaving:18765.0},
+  'CU03AB36802B':{comp:'B128',name:'PCD REAMER D24 2F',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:20000.0,avgReconCost:4613.0,monthlyTotal:20000.0,monthlySaving:0.0},
+  'CU03AB36902B':{comp:'B128',name:'PCD REAMER D27.97',life:100000,prod:100000,monthlyCons:1.0,rotation:2.0,effNeed:0.5,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:19500.0,avgReconCost:4625.0,monthlyTotal:19500.0,monthlySaving:0.0},
+  'CU26AA02812B':{comp:'A506 Cover',name:'SC WOODRUFF CUTTER D20',life:23500,prod:40000,monthlyCons:1.7,rotation:4.0,effNeed:0.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:5140.0,avgReconCost:0.0,monthlyTotal:5140.0,monthlySaving:5140.0},
+  'CU04AA13604F':{comp:'A506 Cover',name:'HSS END MILL D16',life:60000,prod:40000,monthlyCons:0.7,rotation:4.0,effNeed:0.2,leadWks:1.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:2404.0,avgReconCost:210.0,monthlyTotal:2404.0,monthlySaving:0.0},
+  'CU01AG06102F':{comp:'A506 Body',name:'SC STEP DRILL D5xD7',life:5000,prod:40000,monthlyCons:8.0,rotation:4.0,effNeed:2.0,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:2,maxStock:4,newOrderPm:1,reconQtyPm:1,newPrice:1820.0,avgReconCost:86.0,monthlyTotal:1906.0,monthlySaving:12654.0},
+  'CU16BM00102S':{comp:'A506 Cover',name:'TCGT090204 AK H01 Insert',life:5000,prod:40000,monthlyCons:8.0,rotation:1.0,effNeed:8.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16BM00902S':{comp:'A506 Body',name:'INS TCGT110204 AL K901',life:5000,prod:40000,monthlyCons:8.0,rotation:1.0,effNeed:8.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16AQ03102S':{comp:'A506 Body',name:'INS PCD TCMT 110204',life:4167,prod:40000,monthlyCons:9.6,rotation:1.0,effNeed:9.6,leadWks:3.0,maxRecon:0,reconDays:0,minStock:9,maxStock:19,newOrderPm:10,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01AG06202F':{comp:'A506 Body',name:'SC STEP DRILL D13xD18',life:15000,prod:40000,monthlyCons:2.7,rotation:4.0,effNeed:0.7,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:6486.0,avgReconCost:129.0,monthlyTotal:6486.0,monthlySaving:12972.0},
+  'CU02AA01901B':{comp:'A506 Body',name:'TAP M16 X 1.5',life:20000,prod:40000,monthlyCons:2.0,rotation:1.0,effNeed:2.0,leadWks:1.0,maxRecon:0,reconDays:0,minStock:1,maxStock:3,newOrderPm:2,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01AD07602F':{comp:'A506 Body',name:'SC DRILL D10 2FL',life:10000,prod:40000,monthlyCons:4.0,rotation:4.0,effNeed:1.0,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:6500.0,avgReconCost:71.0,monthlyTotal:6500.0,monthlySaving:19500.0},
+  'CU09AA00415A':{comp:'A506 Body',name:'ABRASIVE BRISTLE BRUSH 80mm',life:60000,prod:40000,monthlyCons:0.7,rotation:1.0,effNeed:0.7,leadWks:1.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16BB02617S':{comp:'A944',name:'PCD INSERT XNEW 09T3',life:50000,prod:70000,monthlyCons:1.4,rotation:1.0,effNeed:1.4,leadWks:3.0,maxRecon:0,reconDays:0,minStock:2,maxStock:4,newOrderPm:2,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU26AA02306B':{comp:'A506 Body',name:'SC GROOVE CUTTER D18W5',life:20000,prod:40000,monthlyCons:2.0,rotation:4.0,effNeed:0.5,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:3691.0,avgReconCost:0.0,monthlyTotal:3691.0,monthlySaving:3691.0},
+  'CU03AB17604B':{comp:'A506 Body',name:'PCD REAMER D26xD28 4F',life:100000,prod:40000,monthlyCons:0.4,rotation:2.0,effNeed:0.2,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:17850.0,avgReconCost:3750.0,monthlyTotal:17850.0,monthlySaving:0.0},
+  'CU03AB17502B':{comp:'A506 Cover',name:'PCD REAMER D8 2F',life:71429,prod:40000,monthlyCons:0.6,rotation:2.0,effNeed:0.3,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:10500.0,avgReconCost:2000.0,monthlyTotal:10500.0,monthlySaving:0.0},
+  'CU04IN000040':{comp:'A506 Body',name:'OD Trippening Rough Insert',life:10000,prod:40000,monthlyCons:4.0,rotation:1.0,effNeed:4.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:3,maxStock:7,newOrderPm:4,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000028':{comp:'A506 Body',name:'TPGX060102 PCD Insert',life:5000,prod:40000,monthlyCons:8.0,rotation:1.0,effNeed:8.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000029':{comp:'A506 Body',name:'TBGT060104 OD Trippening Insert',life:5000,prod:40000,monthlyCons:8.0,rotation:1.0,effNeed:8.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000030':{comp:'A506 Body',name:'CGPT 060204 Insert',life:5000,prod:40000,monthlyCons:8.0,rotation:1.0,effNeed:8.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000031':{comp:'A506 Body',name:'CCGT 060204 PCD Insert',life:5000,prod:40000,monthlyCons:8.0,rotation:1.0,effNeed:8.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU03AB22502B':{comp:'A897 Body',name:'PCD REAMER D8 BODY',life:100000,prod:15000,monthlyCons:0.1,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:11850.0,avgReconCost:2125.0,monthlyTotal:11850.0,monthlySaving:0.0},
+  'CU01AD02902A':{comp:'A897 Body',name:'SC DRILL D5.50',life:15000,prod:15000,monthlyCons:1.0,rotation:4.0,effNeed:0.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:1011.0,avgReconCost:86.0,monthlyTotal:1011.0,monthlySaving:0.0},
+  'CU01AD09502F':{comp:'A897 Body',name:'SC DRILL D4',life:25000,prod:15000,monthlyCons:0.6,rotation:4.0,effNeed:0.1,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:1112.0,avgReconCost:40.0,monthlyTotal:1112.0,monthlySaving:0.0},
+  'CU04AA12904F':{comp:'A897 Body',name:'SC BALL NOSE D13',life:20000,prod:15000,monthlyCons:0.8,rotation:4.0,effNeed:0.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:3873.0,avgReconCost:217.0,monthlyTotal:3873.0,monthlySaving:0.0},
+  'CU01AD08102F':{comp:'A897 Body',name:'DOUBLE ENDED SC DRILL D2.05',life:20000,prod:15000,monthlyCons:0.8,rotation:4.0,effNeed:0.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:1760.0,avgReconCost:167.0,monthlyTotal:1760.0,monthlySaving:0.0},
+  'CU16BM01402S':{comp:'A897 Body',name:'INSERT TNMG160408',life:40000,prod:15000,monthlyCons:0.4,rotation:1.0,effNeed:0.4,leadWks:2.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16BL00902S':{comp:'A897 Body',name:'DCGT 11T304 AL K901',life:24000,prod:15000,monthlyCons:0.6,rotation:1.0,effNeed:0.6,leadWks:2.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16AB00602S':{comp:'A897 Body',name:'INSERT CCGT 09T308T',life:15000,prod:15000,monthlyCons:1.0,rotation:1.0,effNeed:1.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16BK02402D':{comp:'A897 Body',name:'INS GROOVING GMA200',life:4500,prod:15000,monthlyCons:3.3,rotation:1.0,effNeed:3.3,leadWks:3.0,maxRecon:0,reconDays:0,minStock:3,maxStock:7,newOrderPm:4,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01AG06302F':{comp:'A897 Body',name:'SC STEP DRILL D5',life:5000,prod:15000,monthlyCons:3.0,rotation:4.0,effNeed:0.8,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:2309.0,avgReconCost:150.0,monthlyTotal:2309.0,monthlySaving:4618.0},
+  'CU03AB22402B':{comp:'A897 Body',name:'PCD STEP REAMER D6',life:73950,prod:15000,monthlyCons:0.2,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:15000.0,avgReconCost:1875.0,monthlyTotal:15000.0,monthlySaving:0.0},
+  'CU03AB22602B':{comp:'A897 Body',name:'PCD REAMER D8 COVER',life:100000,prod:15000,monthlyCons:0.1,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:11850.0,avgReconCost:2250.0,monthlyTotal:11850.0,monthlySaving:0.0},
+  'CU16BB02147S':{comp:'A944',name:'INSERT PCD TNGA160404',life:5000,prod:70000,monthlyCons:14.0,rotation:1.0,effNeed:14.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:13,maxStock:27,newOrderPm:14,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU16BB02157S':{comp:'A897 Body',name:'INS PCD CCMW09T302',life:5000,prod:15000,monthlyCons:3.0,rotation:1.0,effNeed:3.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:3,maxStock:6,newOrderPm:3,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU03AB22702B':{comp:'A897 Body',name:'PCD REAMER D21 2F',life:100000,prod:15000,monthlyCons:0.1,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:20000.0,avgReconCost:3125.0,monthlyTotal:20000.0,monthlySaving:0.0},
+  'CU01AC28702F':{comp:'A944',name:'STEP DRILL Ø5xØ15',life:45000,prod:70000,monthlyCons:1.6,rotation:4.0,effNeed:0.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:6609.0,avgReconCost:310.0,monthlyTotal:6609.0,monthlySaving:6609.0},
+  'CU01AC30802F':{comp:'A944',name:'CORE DRILL D11.4',life:12371,prod:70000,monthlyCons:5.7,rotation:4.0,effNeed:1.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:3,newOrderPm:1,reconQtyPm:1,newPrice:1850.0,avgReconCost:323.0,monthlyTotal:2173.0,monthlySaving:8927.0},
+  'CU02AA07101D':{comp:'A944',name:'TAP M14X1.0 HSS-E',life:16667,prod:70000,monthlyCons:4.2,rotation:1.0,effNeed:4.2,leadWks:1.0,maxRecon:0,reconDays:0,minStock:2,maxStock:7,newOrderPm:5,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU03AB39702B':{comp:'A944',name:'PCD REAMER D12.032',life:38638,prod:70000,monthlyCons:1.8,rotation:2.0,effNeed:0.9,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:2,maxStock:3,newOrderPm:1,reconQtyPm:0,newPrice:31000.0,avgReconCost:5750.0,monthlyTotal:31000.0,monthlySaving:31000.0},
+  'CU09AA02214A':{comp:'A944',name:'ABRASIVE BRISTLE BRUSH 60mm',life:100000,prod:70000,monthlyCons:0.7,rotation:1.0,effNeed:0.7,leadWks:1.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000025':{comp:'A944',name:'CPGW09T302 PCD Insert',life:18182,prod:70000,monthlyCons:3.8,rotation:1.0,effNeed:3.8,leadWks:3.0,maxRecon:0,reconDays:0,minStock:4,maxStock:8,newOrderPm:4,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CI04IN000026':{comp:'A944',name:'SNEW PCD Insert',life:5000,prod:70000,monthlyCons:14.0,rotation:1.0,effNeed:14.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:13,maxStock:27,newOrderPm:14,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01SC000267':{comp:'B493',name:'D22 SC Endmill',life:2000,prod:75000,monthlyCons:37.5,rotation:4.0,effNeed:9.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:6,maxStock:16,newOrderPm:3,reconQtyPm:7,newPrice:17000.0,avgReconCost:263.0,monthlyTotal:52843.0,monthlySaving:593157.0},
+  'CU01SC000237':{comp:'B493',name:'D16 SC Endmill',life:1000,prod:75000,monthlyCons:75.0,rotation:4.0,effNeed:18.8,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:12,maxStock:31,newOrderPm:5,reconQtyPm:14,newPrice:9200.0,avgReconCost:175.0,monthlyTotal:48450.0,monthlySaving:641550.0},
+  'CU01SC000236':{comp:'B493',name:'D10X0.4 SC Endmill',life:400,prod:75000,monthlyCons:187.5,rotation:4.0,effNeed:46.9,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:29,maxStock:76,newOrderPm:12,reconQtyPm:35,newPrice:4000.0,avgReconCost:103.0,monthlyTotal:51593.0,monthlySaving:700407.0},
+  'CU01SC000239':{comp:'B493',name:'D10X1.5 SC Endmill',life:1700,prod:75000,monthlyCons:44.1,rotation:4.0,effNeed:11.0,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:7,maxStock:19,newOrderPm:3,reconQtyPm:9,newPrice:4000.0,avgReconCost:103.0,monthlyTotal:12924.0,monthlySaving:167076.0},
+  'CU01SC000047':{comp:'B493',name:'D9 SC Drill',life:1600,prod:75000,monthlyCons:46.9,rotation:4.0,effNeed:11.7,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:8,maxStock:20,newOrderPm:3,reconQtyPm:9,newPrice:6800.0,avgReconCost:176.0,monthlyTotal:21984.0,monthlySaving:297616.0},
+  'CU01SC000238':{comp:'B493',name:'D6.85 Drill',life:2500,prod:75000,monthlyCons:30.0,rotation:4.0,effNeed:7.5,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:5,maxStock:13,newOrderPm:2,reconQtyPm:6,newPrice:4130.0,avgReconCost:100.0,monthlyTotal:8858.0,monthlySaving:115042.0},
+  'CU01SC000048':{comp:'B493',name:'D4 SC Drill',life:3000,prod:75000,monthlyCons:25.0,rotation:4.0,effNeed:6.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:4,maxStock:11,newOrderPm:2,reconQtyPm:5,newPrice:3600.0,avgReconCost:60.0,monthlyTotal:7500.0,monthlySaving:82500.0},
+  'CU01SC000050':{comp:'B493',name:'D10 Chamfer Tool',life:5000,prod:75000,monthlyCons:15.0,rotation:4.0,effNeed:3.8,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:3,maxStock:7,newOrderPm:1,reconQtyPm:3,newPrice:4500.0,avgReconCost:120.0,monthlyTotal:4860.0,monthlySaving:62640.0},
+  'CU01SC000264':{comp:'B493',name:'D6 Chamfer Tool',life:3000,prod:75000,monthlyCons:25.0,rotation:4.0,effNeed:6.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:4,maxStock:11,newOrderPm:2,reconQtyPm:5,newPrice:1500.0,avgReconCost:60.0,monthlyTotal:3300.0,monthlySaving:34200.0},
+  'CU04INSC0081':{comp:'B493',name:'HNGJ Insert',life:500,prod:75000,monthlyCons:150.0,rotation:1.0,effNeed:150.0,leadWks:1.0,maxRecon:0,reconDays:0,minStock:45,maxStock:195,newOrderPm:150,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'A2024092502':{comp:'B493',name:'OAKU Insert',life:300,prod:75000,monthlyCons:250.0,rotation:1.0,effNeed:250.0,leadWks:1.0,maxRecon:0,reconDays:0,minStock:75,maxStock:325,newOrderPm:250,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04INSC0082':{comp:'B493',name:'XNGU Insert',life:300,prod:75000,monthlyCons:250.0,rotation:1.0,effNeed:250.0,leadWks:1.0,maxRecon:0,reconDays:0,minStock:75,maxStock:325,newOrderPm:250,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000016':{comp:'B493',name:'SOEX Insert',life:400,prod:75000,monthlyCons:187.5,rotation:1.0,effNeed:187.5,leadWks:1.0,maxRecon:0,reconDays:0,minStock:57,maxStock:245,newOrderPm:188,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04IN000014':{comp:'B493',name:'SDXT Insert',life:1000,prod:75000,monthlyCons:75.0,rotation:1.0,effNeed:75.0,leadWks:2.0,maxRecon:0,reconDays:0,minStock:45,maxStock:120,newOrderPm:75,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU04INSC0083':{comp:'B493',name:'CCGW Insert',life:10000,prod:75000,monthlyCons:7.5,rotation:1.0,effNeed:7.5,leadWks:2.0,maxRecon:0,reconDays:0,minStock:5,maxStock:13,newOrderPm:8,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'A2024041603.12':{comp:'B493',name:'SC TC REAMER D9.01',life:3000,prod:75000,monthlyCons:25.0,rotation:4.0,effNeed:6.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:4,maxStock:11,newOrderPm:2,reconQtyPm:5,newPrice:4500.0,avgReconCost:176.0,monthlyTotal:9880.0,monthlySaving:102620.0},
+  'A2024041603.3':{comp:'B493',name:'SCTC STEP DRILL D8.7',life:3000,prod:75000,monthlyCons:25.0,rotation:4.0,effNeed:6.2,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:4,maxStock:11,newOrderPm:2,reconQtyPm:5,newPrice:4400.0,avgReconCost:176.0,monthlyTotal:9680.0,monthlySaving:100320.0},
+  'CU04IN000004':{comp:'B487',name:'INSERT CCGW060204 Sandvik 7015',life:1200,prod:100000,monthlyCons:83.3,rotation:1.0,effNeed:83.3,leadWks:4.0,maxRecon:0,reconDays:0,minStock:100,maxStock:184,newOrderPm:84,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01SC000017':{comp:'B487',name:'D6 CBN TOOL',life:700,prod:100000,monthlyCons:142.9,rotation:1.0,effNeed:142.9,leadWks:6.0,maxRecon:0,reconDays:0,minStock:258,maxStock:401,newOrderPm:143,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU01SC000018':{comp:'B487',name:'SPL D3 SC FORM TOOL EAZYCUT',life:1000,prod:100000,monthlyCons:100.0,rotation:2.0,effNeed:50.0,leadWks:4.0,maxRecon:2,reconDays:14.0,minStock:60,maxStock:110,newOrderPm:17,reconQtyPm:33,newPrice:2800.0,avgReconCost:375.0,monthlyTotal:59975.0,monthlySaving:220025.0},
+};
+
+
+// ═══════════════════════════════════════════
 // SHEETS FETCH HELPER — reads any data type
 // ═══════════════════════════════════════════
 async function fetchFromSheets(type, params){
@@ -3923,39 +4015,48 @@ const ALERT_EMAILS = ['Purchase@accurate-tf.com','Prashant.hire@accurate-tf.com'
 // Get inventory master — opening balances + min/max per SAP code
 function getInventoryMaster(){
   return JSON.parse(localStorage.getItem('atf_inventory_master')||'{}');
-  // Structure: { 'CU01SC000237': { office:5, site1:3, site2:8, vendor:2, min:5, max:20, type:'reconditionable' } }
 }
 function saveInventoryMaster(data){
   localStorage.setItem('atf_inventory_master',JSON.stringify(data));
 }
 
-// ── Calculate current stock for a tool code ──────────────
+// ── Get planning data for a tool ──────────────────────────
+function getPlanningData(code){
+  return TOOL_PLANNING[code]||null;
+}
+
+// ── Calculate current stock ────────────────────────────────
 function calcStock(code){
   const master = getInventoryMaster();
-  const ob = master[code] || {office:0,site1:0,site2:0,vendor:0,min:0,max:0,type:'onetime'};
+  const ob     = master[code]||{office:0,site1:0,site2:0,vendor:0};
+  const plan   = getPlanningData(code);
 
-  // Start with opening balance
+  // Min/Max: use manual override if set, else use planning data
+  const minStock = (ob.minOverride!==undefined) ? ob.minOverride
+                 : (plan ? plan.minStock : (ob.min||0));
+  const maxStock = (ob.maxOverride!==undefined) ? ob.maxOverride
+                 : (plan ? plan.maxStock : (ob.max||0));
+
   let office=parseInt(ob.office)||0;
-  let site1=parseInt(ob.site1)||0;
-  let site2=parseInt(ob.site2)||0;
+  let site1 =parseInt(ob.site1)||0;
+  let site2 =parseInt(ob.site2)||0;
   let vendor=parseInt(ob.vendor)||0;
 
-  // + DC Inward (tools arriving at site from office)
+  // + DC Inward → tools move office→site
   dcLogs.forEach(dc=>{
     (dc.items||[]).forEach(item=>{
       if(item.toolCode!==code) return;
       const qty=parseInt(item.qty)||0;
-      if(dc.site==='site1') site1+=qty;
-      else if(dc.site==='site2') site2+=qty;
+      if(dc.site==='site1'){site1+=qty;office=Math.max(0,office-qty);}
+      else if(dc.site==='site2'){site2+=qty;office=Math.max(0,office-qty);}
     });
   });
 
-  // - Tool Changes consumed at site
+  // - Tool Changes → consumed at site
   toolChangeLogs.forEach(tc=>{
     if(tc.toolCode!==code) return;
-    const qty=1; // each tool change = 1 tool consumed
-    if(tc.site==='site1') site1=Math.max(0,site1-qty);
-    else if(tc.site==='site2') site2=Math.max(0,site2-qty);
+    if(tc.site==='site1') site1=Math.max(0,site1-1);
+    else if(tc.site==='site2') site2=Math.max(0,site2-1);
   });
 
   // - Tool Outward from site
@@ -3964,11 +4065,9 @@ function calcStock(code){
       if(item.toolCode!==code) return;
       const qty=parseInt(item.qty)||0;
       if(out.reason==='worn'||out.reason==='broken'){
-        // Scrapped — just reduce site stock
         if(out.site==='site1') site1=Math.max(0,site1-qty);
         else if(out.site==='site2') site2=Math.max(0,site2-qty);
-      } else if(out.reason==='reconditioning'||out.reason==='return'){
-        // Sent back to office/vendor
+      } else {
         if(out.site==='site1') site1=Math.max(0,site1-qty);
         else if(out.site==='site2') site2=Math.max(0,site2-qty);
         if(out.reason==='reconditioning') vendor+=qty;
@@ -3977,34 +4076,66 @@ function calcStock(code){
     });
   });
 
-  // Reconditioning: sent to vendor → received back
+  // Recon received → vendor to office
   reconLogs.forEach(r=>{
     (r.items||[]).forEach(item=>{
       if(item.toolCode!==code) return;
       const qty=parseInt(item.qty)||0;
-      if(r.status==='received'){
-        // Returned from vendor → back to office
-        vendor=Math.max(0,vendor-qty);
-        office+=qty;
-      }
+      if(r.status==='received'){vendor=Math.max(0,vendor-qty);office+=qty;}
     });
   });
 
   const total=office+site1+site2+vendor;
-  const min=parseInt(ob.min)||0;
-  const max=parseInt(ob.max)||0;
-  let status='ok';
-  if(min>0 && total===0) status='critical';
-  else if(min>0 && total<=min) status='low';
-  else if(max>0 && total>max) status='overstock';
+  const avail=office+site1+site2; // available (not at vendor)
 
-  return {office,site1,site2,vendor,total,min,max,type:ob.type||'onetime',status};
+  let status='ok';
+  if(minStock>0 && avail===0)        status='critical';
+  else if(minStock>0 && avail<=minStock) status='low';
+  else if(maxStock>0 && avail>maxStock)  status='overstock';
+
+  return {office,site1,site2,vendor,total,avail,
+          min:minStock,max:maxStock,
+          type:ob.type||'onetime',status,plan};
 }
 
-// ── Init inventory tab ──────────────────────────────────
+// ── Init inventory tab ─────────────────────────────────────
 function initInventory(){
+  renderInventorySummary();
   renderInventory();
   checkLowStockAlerts();
+}
+
+// ── Planning summary banner ────────────────────────────────
+function renderInventorySummary(){
+  const toolData=getToolCodes();
+  let totalSaving=0,totalCost=0,planCount=0;
+  Object.values(toolData).forEach(tools=>{
+    tools.forEach(t=>{
+      const p=getPlanningData(t.code);
+      if(p){totalSaving+=p.monthlySaving||0;totalCost+=p.monthlyTotal||0;planCount++;}
+    });
+  });
+  let banner=document.getElementById('inv-planning-banner');
+  if(!banner){
+    banner=document.createElement('div');
+    banner.id='inv-planning-banner';
+    banner.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px';
+    const alertBanner=document.getElementById('inv-alert-banner');
+    alertBanner.parentNode.insertBefore(banner,alertBanner);
+  }
+  banner.innerHTML=`
+    <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px;text-align:center">
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Monthly Saving vs All-New</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green)">₹${(totalSaving/100000).toFixed(1)}L</div>
+    </div>
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);padding:10px;text-align:center">
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Planned Monthly Spend</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--blue)">₹${(totalCost/100000).toFixed(1)}L</div>
+    </div>
+    <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:10px;text-align:center">
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Tools Planned</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#c4b5fd">${planCount} / 84</div>
+    </div>`;
 }
 
 // ── Render inventory table ──────────────────────────────
@@ -4069,9 +4200,11 @@ function renderInventory(){
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">P15</th>
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">P44</th>
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Vendor</th>
-        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Total</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Avail</th>
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--red);text-transform:uppercase">Min</th>
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--green);text-transform:uppercase">Max</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--amber);text-transform:uppercase">Need/mo</th>
+        <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--violet);text-transform:uppercase">Recon/mo</th>
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Status</th>
         <th style="padding:8px 6px;text-align:center;font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase">Edit</th>
       </tr>
@@ -4079,25 +4212,27 @@ function renderInventory(){
     <tbody>
       ${allTools.map(t=>{
         const s=t.stock;
+        const p=s.plan;
         const statusColor={critical:'var(--red)',low:'var(--amber)',ok:'var(--green)',overstock:'var(--blue)'}[s.status]||'var(--fog)';
         const statusLabel={critical:'🔴 Critical',low:'🟡 Low',ok:'🟢 OK',overstock:'🔵 Over'}[s.status]||'—';
         const rowBg=s.status==='critical'?'rgba(239,68,68,.05)':s.status==='low'?'rgba(245,158,11,.04)':'';
-        const minSet=s.min>0;
         return`<tr style="background:${rowBg};border-bottom:1px solid rgba(255,255,255,.04)" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='${rowBg}'">
           <td style="padding:8px 10px">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${needsCoating(t.code)?'var(--amber)':'var(--mist)'}">${t.code}${needsCoating(t.code)?' 🎨':''}</div>
-            <div style="font-size:10px;color:var(--fog);margin-top:1px">${t.comp} · ${t.name?.substring(0,30)||''}</div>
+            <div style="font-size:10px;color:var(--fog);margin-top:1px">${t.comp} · ${t.name?.substring(0,28)||''}</div>
           </td>
           <td style="padding:8px 6px;text-align:center;font-weight:600;color:var(--white)">${s.office}</td>
           <td style="padding:8px 6px;text-align:center;font-weight:600;color:var(--white)">${s.site1}</td>
           <td style="padding:8px 6px;text-align:center;font-weight:600;color:var(--white)">${s.site2}</td>
           <td style="padding:8px 6px;text-align:center;font-weight:600;color:#c4b5fd">${s.vendor}</td>
-          <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor}">${s.total}</td>
-          <td style="padding:8px 6px;text-align:center;color:var(--red);font-weight:600">${minSet?s.min:'—'}</td>
-          <td style="padding:8px 6px;text-align:center;color:var(--green);font-weight:600">${s.max>0?s.max:'—'}</td>
+          <td style="padding:8px 6px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor}">${s.avail}</td>
+          <td style="padding:8px 6px;text-align:center;color:var(--red);font-weight:700">${s.min||'—'}</td>
+          <td style="padding:8px 6px;text-align:center;color:var(--green);font-weight:600">${s.max||'—'}</td>
+          <td style="padding:8px 6px;text-align:center;color:var(--amber);font-weight:700">${p?p.newOrderPm:''}</td>
+          <td style="padding:8px 6px;text-align:center;color:#c4b5fd;font-weight:600">${p&&p.reconQtyPm>0?p.reconQtyPm:''}</td>
           <td style="padding:8px 6px;text-align:center"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${statusColor}22;color:${statusColor};font-weight:700">${statusLabel}</span></td>
           <td style="padding:8px 6px;text-align:center">
-            <button onclick="openOBModal('${t.code}','${t.name?.replace(/'/g,'')}')" style="background:none;border:1px solid var(--slate);border-radius:5px;color:var(--fog);cursor:pointer;font-size:10px;padding:3px 7px">✏️</button>
+            <button onclick="openOBModal('${t.code}','${(t.name||'').replace(/'/g,'').substring(0,30)}')" style="background:none;border:1px solid var(--slate);border-radius:5px;color:var(--fog);cursor:pointer;font-size:10px;padding:3px 7px">✏️</button>
           </td>
         </tr>`;
       }).join('')}
@@ -4111,21 +4246,56 @@ let _currentOBCode='';
 function openOBModal(code, name){
   _currentOBCode=code;
   const master=getInventoryMaster();
-  const ob=master[code]||{office:0,site1:0,site2:0,vendor:0,min:0,max:0,type:'onetime'};
+  const ob=master[code]||{office:0,site1:0,site2:0,vendor:0};
+  const plan=getPlanningData(code);
   const price=getToolPrice(code);
+
   document.getElementById('inv-ob-title').textContent='EDIT STOCK — '+code;
+
+  // Planning data block
+  let planHtml='<em style="color:var(--fog)">No planning data — fill planning Excel and import</em>';
+  if(plan){
+    planHtml=`
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
+        <div style="text-align:center">
+          <div style="font-size:9px;color:var(--fog)">Monthly Need</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--amber)">${plan.effNeed}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:var(--fog)">New Order/mo</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--blue)">${plan.newOrderPm}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:var(--fog)">Recon/mo</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#c4b5fd">${plan.reconQtyPm}</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--fog);line-height:1.6">
+        Rotation: ${plan.rotation}× · Min Stock: <strong style="color:var(--red)">${plan.minStock}</strong> · Max: <strong style="color:var(--green)">${plan.maxStock}</strong> · 
+        Monthly saving: <strong style="color:var(--green)">₹${(plan.monthlySaving||0).toLocaleString('en-IN')}</strong>
+      </div>`;
+  }
+
   document.getElementById('inv-ob-tool-info').innerHTML=`
-    <strong>${code}</strong> — ${name}<br/>
-    Make: ${getToolCodes()[Object.keys(getToolCodes()).find(k=>getToolCodes()[k].find(t=>t.code===code))||'']?.find(t=>t.code===code)?.make||'—'} &nbsp;|&nbsp;
-    Unit Price: ₹${price>0?price.toLocaleString('en-IN'):'Not set'} &nbsp;|&nbsp;
-    Coating: ${needsCoating(code)?'🎨 Yes':'No'}`;
+    <div style="margin-bottom:7px"><strong>${code}</strong> — ${name}</div>
+    <div style="font-size:10px;color:var(--fog);margin-bottom:8px">
+      Make: ${getToolCodes()[Object.keys(getToolCodes()).find(k=>getToolCodes()[k].find(t=>t.code===code))||'']?.find(t=>t.code===code)?.make||'—'} &nbsp;|&nbsp;
+      Unit Price: ₹${price>0?price.toLocaleString('en-IN'):'Not set'} &nbsp;|&nbsp;
+      Coating: ${needsCoating(code)?'🎨 Yes':'No'}
+    </div>
+    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:5px;padding:8px 10px">
+      <div style="font-size:9px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">📊 Planning Data (from Excel)</div>
+      ${planHtml}
+    </div>`;
+
   document.getElementById('ob-office').value=ob.office||0;
   document.getElementById('ob-site1').value=ob.site1||0;
   document.getElementById('ob-site2').value=ob.site2||0;
   document.getElementById('ob-vendor').value=ob.vendor||0;
-  document.getElementById('ob-min').value=ob.min||0;
-  document.getElementById('ob-max').value=ob.max||0;
-  document.getElementById('ob-type').value=ob.type||'onetime';
+  // Use manual overrides if set, else show planning values
+  document.getElementById('ob-min').value=ob.minOverride!==undefined?ob.minOverride:(plan?plan.minStock:0);
+  document.getElementById('ob-max').value=ob.maxOverride!==undefined?ob.maxOverride:(plan?plan.maxStock:0);
+  document.getElementById('ob-type').value=ob.type||(plan&&plan.maxRecon>0?'reconditionable':'onetime');
   document.getElementById('inv-ob-modal').style.display='block';
 }
 
@@ -4137,18 +4307,28 @@ function closeOBModal(){
 function saveOpeningBalance(){
   if(!_currentOBCode){showToast('No tool selected','err');return;}
   const master=getInventoryMaster();
+  const plan=getPlanningData(_currentOBCode);
+  const newMin=parseInt(document.getElementById('ob-min').value)||0;
+  const newMax=parseInt(document.getElementById('ob-max').value)||0;
+
   master[_currentOBCode]={
-    office:parseInt(document.getElementById('ob-office').value)||0,
-    site1:parseInt(document.getElementById('ob-site1').value)||0,
-    site2:parseInt(document.getElementById('ob-site2').value)||0,
-    vendor:parseInt(document.getElementById('ob-vendor').value)||0,
-    min:parseInt(document.getElementById('ob-min').value)||0,
-    max:parseInt(document.getElementById('ob-max').value)||0,
-    type:document.getElementById('ob-type').value||'onetime',
-    updatedAt:new Date().toISOString()
+    office: parseInt(document.getElementById('ob-office').value)||0,
+    site1:  parseInt(document.getElementById('ob-site1').value)||0,
+    site2:  parseInt(document.getElementById('ob-site2').value)||0,
+    vendor: parseInt(document.getElementById('ob-vendor').value)||0,
+    // Only store as override if different from planning values
+    minOverride: (plan && newMin===plan.minStock) ? undefined : newMin,
+    maxOverride: (plan && newMax===plan.maxStock) ? undefined : newMax,
+    type: document.getElementById('ob-type').value||'onetime',
+    updatedAt: new Date().toISOString()
   };
+  // Clean up undefined values
+  Object.keys(master[_currentOBCode]).forEach(k=>{
+    if(master[_currentOBCode][k]===undefined) delete master[_currentOBCode][k];
+  });
   saveInventoryMaster(master);
   closeOBModal();
+  renderInventorySummary();
   renderInventory();
   checkLowStockAlerts();
   showToast('✅ Stock saved for '+_currentOBCode,'ok');
