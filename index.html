@@ -1310,6 +1310,80 @@ function fmt(sheet,cols){sheet.getRange(1,1,1,cols).setFontWeight('bold').setBac
       <div style="font-size:10px;color:var(--fog);text-align:center;margin-top:6px;line-height:1.5">Use this once before going live — removes all entries made during testing</div>
     </div>
   </div>
+  <!-- MONTHLY PRODUCTION PLAN -->
+  <div class="card" style="border:2px solid rgba(16,185,129,.25)">
+    <div class="card-hdr" style="background:rgba(16,185,129,.08)">
+      <span class="ch-icon">📊</span>
+      <span class="ch-title" style="color:var(--green)">MONTHLY PRODUCTION PLAN</span>
+      <span class="ch-tag" style="background:rgba(16,185,129,.15);color:var(--green)">Update every month</span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:var(--fog);margin-bottom:10px;padding:8px 10px;background:rgba(16,185,129,.05);border-radius:var(--r);border:1px solid rgba(16,185,129,.15);line-height:1.7">
+        📅 Update planned production qty each month before the month starts. App uses these numbers to auto-calculate monthly tool requirement, recon batch size and stock alerts for all components.
+      </div>
+
+      <!-- Month / Year selector -->
+      <div class="frow" style="margin-bottom:10px">
+        <div class="fg">
+          <label>Planning Month</label>
+          <select id="plan-month" style="background:var(--iron);border:1.5px solid rgba(16,185,129,.3);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);-webkit-appearance:none">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Year</label>
+          <input type="number" id="plan-year" value="2026" min="2025" max="2030"
+            style="background:var(--iron);border:1.5px solid rgba(16,185,129,.3);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white)"/>
+        </div>
+      </div>
+
+      <!-- Component wise qty -->
+      <div style="font-size:10px;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Production Targets (pcs / month)</div>
+
+      <div id="prod-plan-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Working days -->
+      <div class="frow" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Working Days this Month</label>
+          <input type="number" id="plan-working-days" value="26" min="20" max="31"
+            style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--white)"/>
+        </div>
+        <div class="fg">
+          <label>Shifts per Day</label>
+          <input type="number" id="plan-shifts" value="3" min="1" max="3"
+            style="background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--white)"/>
+        </div>
+      </div>
+
+      <!-- Total and save -->
+      <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px 13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:10px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Total Monthly Production</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--green)" id="plan-total-display">0 pcs</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--fog)">Last saved</div>
+          <div style="font-size:11px;color:var(--mist)" id="plan-last-saved">—</div>
+        </div>
+      </div>
+
+      <button onclick="saveProductionPlan()" style="width:100%;padding:12px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer">
+        💾 SAVE PRODUCTION PLAN
+      </button>
+
+      <!-- History of last 3 months -->
+      <div style="margin-top:12px" id="plan-history"></div>
+    </div>
+  </div>
+
   <!-- TOOL PRICE MANAGEMENT -->
   <div class="card">
     <div class="card-hdr"><span class="ch-icon">💰</span><span class="ch-title">TOOL PRICES</span><span class="ch-tag">Add / Edit anytime</span></div>
@@ -1457,6 +1531,9 @@ window.onload = () => {
   populateSiteDropdown();
   populateSupervisorDropdown();
   loadCPCSettings();
+  // Apply active production plan to tool planning data
+  const activePlan = getActiveProdPlan();
+  if(activePlan && activePlan.qty) updateToolPlanningFromProd(activePlan.qty);
   renderDashboard();
 };
 
@@ -2854,10 +2931,16 @@ function renderSettings(){
   renderSiteManagement();
   renderToolMasterList();
   renderPriceList();
+  initProductionPlanSettings();
   document.getElementById('cpcLogCount').textContent = logs.length;
   if(cpcSettings.sheetsUrl) document.getElementById('cpcSheetsUrl').value=cpcSettings.sheetsUrl;
   if(cpcSettings.rejThreshold) document.getElementById('rejThreshold').value=cpcSettings.rejThreshold;
   if(cpcSettings.warnThreshold) document.getElementById('warnThreshold').value=cpcSettings.warnThreshold;
+  // Reload plan when month/year changes
+  const pm=document.getElementById('plan-month');
+  const py=document.getElementById('plan-year');
+  if(pm) pm.onchange=renderProdPlanGrid;
+  if(py) py.onchange=renderProdPlanGrid;
 }
 
 
@@ -4403,6 +4486,196 @@ function sendLowStockAlert(channel){
     window.open(`mailto:${to}?subject=${subject}&body=${body}`,'_blank');
     showToast('📧 Email draft opened','ok');
   }
+}
+
+// ═══════════════════════════════════════════
+// MONTHLY PRODUCTION PLAN — Settings
+// ═══════════════════════════════════════════
+const COMPONENTS_LIST = [
+  {key:'A506 Body',  site:'P15', color:'#F59E0B'},
+  {key:'A506 Cover', site:'P15', color:'#FB923C'},
+  {key:'A897 Body',  site:'P15', color:'#3B82F6'},
+  {key:'A897 Shaft', site:'P15', color:'#8B5CF6'},
+  {key:'A944',       site:'P15', color:'#10B981'},
+  {key:'B128',       site:'P15', color:'#06B6D4'},
+  {key:'B487',       site:'P15', color:'#EF4444'},
+  {key:'B493',       site:'P44', color:'#A855F7'},
+];
+
+function getProdPlanStore(){
+  return JSON.parse(localStorage.getItem('atf_prod_plans')||'{}');
+}
+function saveProdPlanStore(data){
+  localStorage.setItem('atf_prod_plans', JSON.stringify(data));
+}
+
+// Get active production plan (current or most recent month)
+function getActiveProdPlan(){
+  const store = getProdPlanStore();
+  const now   = new Date();
+  const key   = `${now.getFullYear()}-${now.getMonth()+1}`;
+  // Try current month first, then any available
+  if(store[key]) return store[key];
+  const keys  = Object.keys(store).sort().reverse();
+  if(keys.length) return store[keys[0]];
+  // Fallback to TOOL_PLANNING embedded values
+  const fallback = {};
+  COMPONENTS_LIST.forEach(c=>{
+    const sample = Object.values(TOOL_PLANNING).find(t=>t.comp===c.key);
+    fallback[c.key] = sample ? sample.prod : 0;
+  });
+  return {qty: fallback, workingDays:26, shifts:3};
+}
+
+function initProductionPlanSettings(){
+  const now   = new Date();
+  const planEl= document.getElementById('plan-month');
+  const yearEl= document.getElementById('plan-year');
+  if(planEl) planEl.value = now.getMonth()+1;
+  if(yearEl) yearEl.value = now.getFullYear();
+  renderProdPlanGrid();
+  renderProdPlanHistory();
+}
+
+function renderProdPlanGrid(){
+  const grid = document.getElementById('prod-plan-grid');
+  if(!grid) return;
+  const month = parseInt(document.getElementById('plan-month')?.value)||new Date().getMonth()+1;
+  const year  = parseInt(document.getElementById('plan-year')?.value)||new Date().getFullYear();
+  const store = getProdPlanStore();
+  const key   = `${year}-${month}`;
+  const saved = store[key]||{};
+
+  grid.innerHTML = COMPONENTS_LIST.map(c=>{
+    const val = saved.qty?.[c.key] || (TOOL_PLANNING[Object.keys(TOOL_PLANNING).find(k=>TOOL_PLANNING[k].comp===c.key)]?.prod||0);
+    return`<div style="background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);padding:8px 10px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+        <div style="font-size:10px;font-weight:700;color:${c.color}">${c.key}</div>
+        <div style="font-size:9px;color:var(--fog);margin-left:auto">${c.site}</div>
+      </div>
+      <input type="number" id="plan-qty-${c.key.replace(/\s/g,'_')}"
+        value="${val||''}" min="0" placeholder="0"
+        oninput="updateProdPlanTotal()"
+        style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 9px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:${c.color};text-align:right"/>
+      <div style="font-size:9px;color:var(--fog);margin-top:3px;text-align:right">pcs / month</div>
+    </div>`;
+  }).join('');
+  updateProdPlanTotal();
+
+  if(saved.savedAt){
+    const el=document.getElementById('plan-last-saved');
+    if(el) el.textContent=new Date(saved.savedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'});
+  }
+  if(saved.workingDays){
+    const wd=document.getElementById('plan-working-days');
+    if(wd) wd.value=saved.workingDays;
+  }
+  if(saved.shifts){
+    const sh=document.getElementById('plan-shifts');
+    if(sh) sh.value=saved.shifts;
+  }
+}
+
+function updateProdPlanTotal(){
+  let total=0;
+  COMPONENTS_LIST.forEach(c=>{
+    const el=document.getElementById('plan-qty-'+c.key.replace(/\s/g,'_'));
+    if(el) total+=parseInt(el.value)||0;
+  });
+  const el=document.getElementById('plan-total-display');
+  if(el) el.textContent=total.toLocaleString('en-IN')+' pcs';
+}
+
+function saveProductionPlan(){
+  const month= parseInt(document.getElementById('plan-month')?.value)||new Date().getMonth()+1;
+  const year = parseInt(document.getElementById('plan-year')?.value)||new Date().getFullYear();
+  const wd   = parseInt(document.getElementById('plan-working-days')?.value)||26;
+  const sh   = parseInt(document.getElementById('plan-shifts')?.value)||3;
+
+  const qty={};
+  COMPONENTS_LIST.forEach(c=>{
+    const el=document.getElementById('plan-qty-'+c.key.replace(/\s/g,'_'));
+    qty[c.key]=parseInt(el?.value)||0;
+  });
+
+  const total=Object.values(qty).reduce((s,v)=>s+v,0);
+  if(!total){showToast('Enter at least one component qty','err');return;}
+
+  const store=getProdPlanStore();
+  const key=`${year}-${month}`;
+  store[key]={qty,workingDays:wd,shifts:sh,month,year,savedAt:new Date().toISOString()};
+  saveProdPlanStore(store);
+
+  // Update TOOL_PLANNING live values based on new production plan
+  updateToolPlanningFromProd(qty);
+
+  renderProdPlanHistory();
+  // Refresh inventory if open
+  if(document.getElementById('pane-inventory')?.classList.contains('active')){
+    renderInventorySummary();
+    renderInventory();
+    checkLowStockAlerts();
+  }
+
+  const monthNames=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  showToast(`✅ Production plan saved — ${monthNames[month]} ${year} · ${total.toLocaleString('en-IN')} pcs`,'ok');
+}
+
+function updateToolPlanningFromProd(qty){
+  // Recalculate effective monthly need for each tool based on new prod plan
+  Object.keys(TOOL_PLANNING).forEach(code=>{
+    const t=TOOL_PLANNING[code];
+    const newProd=qty[t.comp]||t.prod;
+    const monthlyCons=newProd/(t.life||1);
+    const rotation=Math.max(t.rotation||1,1);
+    const effNeed=monthlyCons/rotation;
+    const maxRecon=t.maxRecon||0;
+    t.prod=newProd;
+    t.monthlyCons=Math.round(monthlyCons*10)/10;
+    t.effNeed=Math.round(effNeed*10)/10;
+    t.minStock=Math.max(Math.ceil(effNeed*(t.leadWks||2)/4*1.2),1);
+    t.maxStock=t.minStock+Math.ceil(effNeed);
+    t.newOrderPm=maxRecon>0?Math.ceil(effNeed/(maxRecon+1)):Math.ceil(monthlyCons);
+    t.reconQtyPm=maxRecon>0?Math.ceil(effNeed)-t.newOrderPm:0;
+    t.monthlyTotal=(t.newOrderPm*(t.newPrice||0))+(t.reconQtyPm*(t.avgReconCost||0));
+    t.monthlySaving=(Math.ceil(monthlyCons)*(t.newPrice||0))-t.monthlyTotal;
+  });
+}
+
+function renderProdPlanHistory(){
+  const c=document.getElementById('plan-history');
+  if(!c) return;
+  const store=getProdPlanStore();
+  const keys=Object.keys(store).sort().reverse().slice(0,6);
+  if(!keys.length){c.innerHTML='';return;}
+  const monthNames=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  c.innerHTML=`
+    <div style="font-size:10px;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Previous Plans</div>
+    ${keys.map(k=>{
+      const p=store[k];
+      const total=Object.values(p.qty||{}).reduce((s,v)=>s+v,0);
+      const isActive=k===`${new Date().getFullYear()}-${new Date().getMonth()+1}`;
+      return`<div style="background:var(--iron);border:1px solid ${isActive?'rgba(16,185,129,.3)':'var(--slate)'};border-radius:var(--r);padding:9px 11px;margin-bottom:6px;cursor:pointer" onclick="loadProdPlan(${p.year},${p.month})">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:${isActive?'var(--green)':'var(--white)'}">${monthNames[p.month]} ${p.year}</span>
+          ${isActive?'<span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(16,185,129,.15);color:var(--green);font-weight:700">ACTIVE</span>':''}
+          <span style="margin-left:auto;font-size:11px;color:var(--fog)">${total.toLocaleString('en-IN')} pcs</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">
+          ${COMPONENTS_LIST.map(c=>`<span style="font-size:9px;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.05);color:${c.color}">${c.key.split(' ').pop()}: ${(p.qty?.[c.key]||0).toLocaleString()}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+function loadProdPlan(year, month){
+  const planEl=document.getElementById('plan-month');
+  const yearEl=document.getElementById('plan-year');
+  if(planEl) planEl.value=month;
+  if(yearEl) yearEl.value=year;
+  renderProdPlanGrid();
+  showToast(`Loaded ${['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month]} ${year} plan`,'ok');
 }
 
 // ═══════════════════════════════════════════
