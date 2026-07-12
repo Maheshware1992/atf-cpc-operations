@@ -2618,16 +2618,51 @@ function submitToolChange(){
   showToast('✅ Tool change logged — log next change','ok');
 }
 
-function renderTCTodayList(){
-  const today   = new Date().toISOString().split('T')[0];
-  const todayTC = toolChangeLogs.filter(t=>t.date===today);
-  document.getElementById('tcTodayCount').textContent = todayTC.length;
+async function renderTCTodayList(){
+  const today = new Date().toISOString().split('T')[0];
   const c = document.getElementById('tcTodayList');
+  const countEl = document.getElementById('tcTodayCount');
+
+  // Try Sheets first — shows ALL supervisors' entries
+  let todayTC = [];
+  const sheetsData = await fetchFromSheets('toolchanges', {date: today});
+  if(sheetsData && sheetsData.length){
+    // Map Sheets columns to expected format
+    todayTC = sheetsData.map(row=>({
+      id:           row['id'] || Math.random().toString(36),
+      date:         row['Date']||today,
+      site:         row['Site']||'',
+      siteName:     row['Site']||'',
+      shift:        row['Shift']||'',
+      supervisor:   row['Supervisor']||'',
+      comp:         row['Component']||'',
+      machine:      row['Machine']||'',
+      toolCode:     row['SAP Code']||'',
+      toolName:     row['Tool Name']||'',
+      operation:    row['Operation']||'',
+      make:         row['Make']||'',
+      stdLife:      parseFloat(row['Std Life (pcs)'])||0,
+      lifeAchieved: parseFloat(row['Life Achieved (pcs)'])||0,
+      changeReason: row['Change Reason']||'',
+      newToolFitted:row['New Tool Fitted']||'',
+      remarks:      row['Remarks']||'',
+      fromSheets:   true
+    }));
+  } else {
+    // Fallback to localStorage for this device
+    todayTC = toolChangeLogs.filter(t=>t.date===today);
+  }
+
+  if(countEl) countEl.textContent = todayTC.length;
+  const isCloud = !!cpcSettings.sheetsUrl && sheetsData;
+
   if(!todayTC.length){
     c.innerHTML='<div class="empty"><div class="empty-icon">🔧</div><p>No tool changes logged today.<br/>Use the form above.</p></div>';
     return;
   }
-  c.innerHTML = todayTC.map((t,i)=>{
+
+  c.innerHTML = `<div style="font-size:10px;color:${isCloud?'var(--green)':'var(--amber)'};margin-bottom:8px;text-align:right">${isCloud?'✅ Live — all supervisors':'⚠️ This device only — connect Sheets'}</div>` +
+  todayTC.map((t,i)=>{
     const pct = t.stdLife>0?Math.round((t.lifeAchieved/t.stdLife)*100):null;
     const color = pct===null?'#64748b':pct>=90?'#10b981':pct>=70?'#f59e0b':'#ef4444';
     const shiftColor = {A:'#f59e0b',B:'#8b5cf6',C:'#3b82f6'}[t.shift]||'#64748b';
@@ -2639,6 +2674,7 @@ function renderTCTodayList(){
             <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#c4b5fd">${t.toolCode}</span>
             <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--fog)">M/C ${t.machine}</span>
             <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:rgba(245,158,11,.1);color:${shiftColor}">${t.shift} Shift</span>
+            ${t.supervisor?`<span style="font-size:10px;color:var(--fog)">· ${t.supervisor}</span>`:''}
           </div>
           <div style="font-size:12px;font-weight:500;color:var(--white);margin-bottom:2px">${t.toolName}</div>
           <div style="font-size:10px;color:var(--fog)">${t.comp} · ${t.operation||'—'} · ${t.make||'—'}</div>
@@ -2646,9 +2682,9 @@ function renderTCTodayList(){
             <span style="color:${color};font-weight:600">Life: ${t.lifeAchieved||'—'} pcs${pct!==null?' ('+pct+'% of std '+t.stdLife+')':''}</span>
             <span style="color:var(--fog);margin-left:6px">· ${t.changeReason}</span>
           </div>
-          ${t.newToolFitted&&t.newToolFitted!==t.toolCode?`<div style="font-size:10px;color:var(--green);margin-top:2px">↳ New: ${t.newToolFitted}</div>`:''}
+          ${t.newToolFitted&&t.newToolFitted!==t.toolCode?`<div style="font-size:10px;color:var(--green);margin-top:2px">New: ${t.newToolFitted}</div>`:''}
         </div>
-        <button onclick="deleteTCEntry('${t.id}')" style="background:none;border:none;color:rgba(239,68,68,.4);cursor:pointer;font-size:14px;flex-shrink:0">×</button>
+        ${!t.fromSheets?`<button onclick="deleteTCEntry('${t.id}')" style="background:none;border:none;color:rgba(239,68,68,.4);cursor:pointer;font-size:14px;flex-shrink:0">×</button>`:''}
       </div>
     </div>`;
   }).join('');
