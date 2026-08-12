@@ -226,9 +226,9 @@ select option{background:var(--steel);color:var(--white)}
   <button class="tab"        onclick="switchTab('dashboard')" id="tab-dashboard">📊 Dashboard</button>
   <button class="tab"        onclick="switchTab('toolchange')" id="tab-toolchange">🔧 Tool Change</button>
   <button class="tab"        onclick="switchTab('morning')"   id="tab-morning">☀️ Morning</button>
-  <button class="tab"        onclick="switchTab('outward')"   id="tab-outward">🔄 Outward</button>
+  <button class="tab"        onclick="switchTab('outward')"   id="tab-outward">📤 Used Tools to Office</button>
   <button class="tab office-tab" onclick="handleOfficeTab('inventory')" id="tab-inventory" title="Office Staff Only">📊 Stock 🔒</button>
-  <button class="tab office-tab" onclick="handleOfficeTab('dcinward')"  id="tab-dcinward"  title="Office Staff Only">📦 DC In 🔒</button>
+  <button class="tab office-tab" onclick="handleOfficeTab('dcinward')"  id="tab-dcinward"  title="Office Staff Only">📦 DC to Site 🔒</button>
   <button class="tab office-tab" onclick="handleOfficeTab('recon')"     id="tab-recon"     title="Office Staff Only">♻️ Recon 🔒</button>
   <button class="tab"        onclick="switchTab('settings')"  id="tab-settings">⚙️</button>
 </div>
@@ -517,6 +517,10 @@ select option{background:var(--steel);color:var(--white)}
           <label>Remarks</label>
           <input id="tc-remarks" placeholder="Optional — any additional notes..."/>
         </div>
+          <div class="fg" style="margin-bottom:10px">
+            <label>Batch / Star Marking <span style="font-size:10px;color:var(--amber);font-weight:600">— Unique ID or batch number from tool</span></label>
+            <input id="tc-remarks2" type="text" placeholder="e.g. ATF-B4-EM16-007 or Batch No. / Star marking from tool..."/>
+          </div>
       </div>
 
       <!-- Submit button -->
@@ -549,7 +553,7 @@ select option{background:var(--steel);color:var(--white)}
       DC Inward and Reconditioning tabs contain pricing information.<br/>Enter Mahesh PIN to access.
     </div>
     <div style="font-size:11px;color:var(--amber);margin-bottom:20px;padding:7px 12px;background:rgba(245,158,11,.08);border-radius:var(--r);border:1px solid rgba(245,158,11,.2)">
-      Line supervisors: use 📝 Shift Log, 🔧 Tool Change and 🔄 Outward tabs
+      Line supervisors: use 📝 Shift Log, 🔧 Tool Change and 📤 Used Tools to Office tabs
     </div>
 
     <!-- PIN dots -->
@@ -678,73 +682,106 @@ select option{background:var(--steel);color:var(--white)}
 
 <!-- ════ DC INWARD ════ -->
 <div id="pane-dcinward" class="pane">
+  <div class="card-hdr" style="background:rgba(16,185,129,.08);border-bottom:1px solid rgba(16,185,129,.15);padding:12px 14px;border-radius:var(--r2) var(--r2) 0 0">
+    <span class="ch-icon">📦</span>
+    <span class="ch-title" style="color:var(--green)">DC INWARD — TOOL RECEIPT</span>
+  </div>
 
-  <!-- DC Entry Form -->
-  <div class="card" style="border:2px solid rgba(16,185,129,.25)">
-    <div class="card-hdr" style="background:rgba(16,185,129,.1)">
-      <span class="ch-icon">📦</span>
-      <span class="ch-title" style="color:var(--green)">LOG DC INWARD</span>
-      <span class="ch-tag" style="background:rgba(16,185,129,.15);color:var(--green)">Office Staff</span>
+  <!-- Mode toggle -->
+  <div style="display:flex;gap:8px;padding:12px 14px 0">
+    <button id="dc-mode-po" onclick="setDCMode('po')"
+      style="flex:1;padding:10px;background:rgba(245,158,11,.15);border:2px solid rgba(245,158,11,.5);border-radius:var(--r);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--amber);transition:all .2s">
+      📋 Generate IDs for PO
+    </button>
+    <button id="dc-mode-recv" onclick="setDCMode('recv')"
+      style="flex:1;padding:10px;background:rgba(16,185,129,.08);border:2px solid rgba(16,185,129,.2);border-radius:var(--r);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--fog);transition:all .2s">
+      ✅ Confirm Receipt (DC)
+    </button>
+  </div>
+
+  <!-- PO MODE — Generate IDs before receipt -->
+  <div id="dc-po-section" style="padding:12px 14px">
+    <div style="font-size:11px;color:var(--fog);line-height:1.6;margin-bottom:10px;padding:8px 10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r)">
+      📋 Use this when raising a PO to supplier. Generate Unique IDs now → add to PO → supplier etches on tools before dispatch.
     </div>
-    <div class="card-body">
-      <div style="font-size:11px;color:var(--fog);margin-bottom:12px;padding:8px 10px;background:rgba(16,185,129,.06);border-radius:var(--r);border:1px solid rgba(16,185,129,.15);line-height:1.6">
-        📋 Log every Delivery Challan after tools are delivered to site. Add one line per tool code on the DC.
-      </div>
-      <div class="frow">
-        <div class="fg"><label>DC Number (from Tally) <span class="req">*</span></label><input id="dc-no" placeholder="e.g. DC-2627-0045"/></div>
-        <div class="fg"><label>DC Date <span class="req">*</span></label><input type="date" id="dc-date"/></div>
-      </div>
-      <div class="frow">
-        <div class="fg">
-          <label>CPC Site <span class="req">*</span></label>
-          <select id="dc-site">
-            <option value="">— Select —</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label>Received By (Supervisor) <span class="req">*</span></label>
-          <select id="dc-supervisor">
-            <option value="">— Select —</option>
-          </select>
-        </div>
-      </div>
 
-      <!-- DC Line Items -->
-      <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 7px">Tool Line Items</div>
-      <div id="dc-items-container"></div>
-      <button onclick="addDCItem()" style="width:100%;padding:8px;background:none;border:1.5px dashed rgba(16,185,129,.35);border-radius:var(--r);color:var(--green);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px;transition:all .2s">➕ Add Tool Line Item</button>
-
-      <!-- DC Total -->
-      <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:10px 13px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:10px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Total DC Value</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--green)" id="dc-total">₹ 0.00</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:10px;color:var(--fog)">Line items</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--white)" id="dc-item-count">0</div>
-          </div>
-        </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="field">
+        <label>PO Reference No <span class="req">*</span></label>
+        <input id="po-ref" placeholder="e.g. PO-2627-0123" oninput="this.style.border='';const e=document.getElementById('po-ref-error');if(e)e.remove()"/>
       </div>
-
-      <div class="fg" style="margin-bottom:10px">
-        <label>Remarks</label>
-        <input id="dc-remarks" placeholder="e.g. Urgent delivery for B487 trial, partial DC remaining"/>
+      <div class="field">
+        <label>Supplier Name</label>
+        <input id="po-supplier" placeholder="e.g. Om Tools"/>
       </div>
-
-      <button onclick="submitDCInward()" style="width:100%;padding:13px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:var(--r2);font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px">
-        📦 LOG DC INWARD
-      </button>
     </div>
+
+    <div id="po-items-container"></div>
+    <button onclick="addPOItem()" style="width:100%;padding:8px;background:none;border:1.5px dashed rgba(245,158,11,.4);border-radius:var(--r);color:var(--amber);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:10px">
+      ➕ Add Tool Line Item
+    </button>
+
+    <button onclick="generatePOIds()" style="width:100%;padding:13px;background:linear-gradient(135deg,#b45309,#f59e0b);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;cursor:pointer;margin-top:4px">
+      🔖 Generate Unique IDs for PO
+    </button>
+  </div>
+
+  <!-- RECEIPT MODE — Confirm physical arrival -->
+  <div id="dc-recv-section" style="display:none;padding:12px 14px">
+    <div style="font-size:11px;color:var(--fog);line-height:1.6;margin-bottom:10px;padding:8px 10px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:var(--r)">
+      ✅ Tools have arrived. Select PO IDs received and confirm DC details.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="field">
+        <label>DC Number <span class="req">*</span></label>
+        <input id="dc-no" placeholder="e.g. DC-2627-0045"/>
+      </div>
+      <div class="field">
+        <label>DC Date <span class="req">*</span></label>
+        <input type="date" id="dc-date"/>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="field">
+        <label>Site / Location</label>
+        <select id="dc-site">
+          <option value="">— Select —</option>
+          <option value="office">🏢 ATF Office</option>
+          <option value="site1">🏭 P15 Site</option>
+          <option value="site2">🏭 P44 Site</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Supervisor</label>
+        <select id="dc-supervisor">
+          <option value="">— Select —</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- On-Order IDs grouped by SAP code -->
+    <div id="dc-onorder-container">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px">
+        📋 Pending IDs (On Order)
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:8px">
+      <label>Remarks</label>
+      <input id="dc-remarks" placeholder="e.g. Partial DC, balance pending"/>
+    </div>
+
+    <button onclick="submitDCReceipt()" style="width:100%;padding:13px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;cursor:pointer;margin-top:10px">
+      ✅ Confirm Receipt
+    </button>
   </div>
 
   <!-- DC History -->
-  <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--fog);margin:4px 0 8px;display:flex;align-items:center;gap:7px">
-    Recent DC Inwards
-    <span style="flex:1;height:1px;background:var(--iron)"></span>
+  <div style="padding:0 14px 14px">
+    <div style="font-size:9px;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;margin-top:4px">Recent DC Inward History</div>
+    <div id="dc-history"></div>
   </div>
-  <div id="dc-history-list"></div>
 
 </div><!-- /pane-dcinward -->
 
@@ -1620,12 +1657,14 @@ function renderMachineLog(){
 
   Object.entries(siteData.components).forEach(([comp, machines])=>{
     const color = COMP_COLORS[comp] || '#64748b';
+    const group = getMultiProductGroup(comp);
     const section = document.createElement('div');
     section.className = 'machine-section';
     section.innerHTML = `
       <div class="machine-section-hdr" style="border-left-color:${color}">
         <span class="ms-component" style="color:${color}">${comp}</span>
         <span class="ms-count">${machines.length} machine${machines.length>1?'s':''}</span>
+        ${group?`<button onclick="showShiftVariantPopup('${comp}')" style="margin-left:auto;font-size:10px;padding:3px 9px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--amber);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">Switch: Body/Cover ▾</button>`:''}
       </div>`;
 
     machines.forEach(mc=>{
@@ -1637,6 +1676,8 @@ function renderMachineLog(){
       const pctClass = pct >= 3 ? 'bad' : pct >= 1 ? 'warn' : 'good';
       const hasData = prod > 0;
       const hasRej  = rej > 0;
+      const isMultiProd = !!getDualProdLabels(comp);
+      const defaultOpen = isMultiProd || hasData;
 
       const card = document.createElement('div');
       card.className = `machine-row${hasData?' has-data':''}${hasRej?' has-rejection':''}`;
@@ -1644,16 +1685,23 @@ function renderMachineLog(){
       card.innerHTML = `
         <div class="mr-header" onclick="toggleMachine('${key}')">
           <span class="mr-no">M/C ${key} <span class="mr-type">${mc.type}</span></span>
-          ${hasData ? `<span class="mr-summary ${hasRej?'warn':'ok'}">${prod} pcs${hasRej?' · '+rej+' rej':''}</span>` : '<span class="mr-summary" style="color:var(--fog)">Not filled</span>'}
-          <span class="mr-chev" id="chev-${key.replace(/\s/g,'_')}">▼</span>
+          ${hasData ? `<span class="mr-summary ${hasRej?'warn':'ok'}">${prod} pcs${hasRej?' · '+rej+' rej':''}</span>` : isMultiProd ? '<span class="mr-summary" style="color:var(--amber);font-size:9px">▶ Enter Production</span>' : '<span class="mr-summary" style="color:var(--fog)">Not filled</span>'}
+          <span class="mr-chev${defaultOpen?' open':''}" id="chev-${key.replace(/\s/g,'_')}">▼</span>
         </div>
-        <div class="mr-body" id="body-${key.replace(/\s/g,'_')}">
+        <div class="mr-body${defaultOpen?' open':''}" id="body-${key.replace(/\s/g,'_')}">
           <div class="mr-grid">
+            ${getDualProdLabels(comp)?`
+            <div class="mr-field" style="grid-column:1/-1">
+              <label style="color:var(--amber);font-weight:700">Production Split</label>
+              ${renderDualProdFields(comp, key)}
+            </div>
+            `:`
             <div class="mr-field">
               <label>Production (pcs)</label>
               <input type="number" min="0" value="${prod||''}" placeholder="0"
                 oninput="updateMachine('${key}','production',this.value)"/>
             </div>
+            `}
             <div class="mr-field">
               <label>Rejection (pcs)</label>
               <input type="number" min="0" value="${rej||''}" placeholder="0"
@@ -2219,6 +2267,7 @@ function getDefaultToolCodes(){
       {code:'RE03AB36802B',name:'RE PCD REAMER D24XFL30XOAL80XSH20X2F',operation:'Reaming',make:'Global Tools',stdLife:100000},
       {code:'CU03AB36902B',name:'PCD REAMER D27.97XCHXOAL80XSH20',operation:'Reaming',make:'Global Tools',stdLife:100000},
       {code:'RE03AB36902B',name:'RE PCD REAMER D27.97XCHXOAL80XSH20',operation:'Reaming',make:'Global Tools',stdLife:100000},
+      {code:'CU16BB02617S',name:'XNEW PCD INSERT 09T3 DA2200',operation:'Milling',make:'Rudrali',stdLife:40000},
     ],
     'A506 Body':[
       {code:'CU26AA02812B',name:'SC WOODRUFF CUTTER D20XSH12XOAL80',operation:'Milling',make:'Om Tools',stdLife:23500},
@@ -2519,18 +2568,60 @@ function onTCToolChange(){
   const ind  = document.getElementById('tc-lifeindicator');
   if(!opt||!opt.dataset.tool){det.style.display='none';ind.style.display='none';return;}
   const t = JSON.parse(opt.dataset.tool);
-  document.getElementById('tc-operation').value = t.operation||'—';
+
+  // Check if dual operation tool — show popup
+  if(isDualOpTool(t.code)){
+    det.style.display='none'; ind.style.display='none';
+    showTCDualOpPopup(t);
+    return;
+  }
+  applyTCTool(t, t.operation, t.stdLife);
+}
+
+function showTCDualOpPopup(tool){
+  const ops=getDualOps(tool.code);
+  const ex=document.getElementById('dual-op-modal');if(ex)ex.remove();
+  // Store tool in window to avoid inline JSON quoting issues
+  window._dualOpTool = tool;
+  const modal=document.createElement('div');
+  modal.id='dual-op-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:700;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML=`<div style="background:var(--steel);border:2px solid rgba(245,158,11,.4);border-radius:var(--r2);padding:18px;max-width:340px;width:100%">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--amber);margin-bottom:3px">Select Operation</div>
+    <div style="font-size:11px;color:var(--fog);margin-bottom:14px;line-height:1.5">${tool.code} — ${tool.name}<br/>Same tool used for multiple operations with different target lives.</div>
+    ${ops.map((op,i)=>`
+    <button onclick="selectTCDualOp(${i})" style="width:100%;text-align:left;padding:12px 14px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);margin-bottom:8px;cursor:pointer;display:block">
+      <div style="font-size:14px;font-weight:700;color:var(--white)">${op.op}</div>
+      <div style="font-size:11px;color:var(--amber);margin-top:2px">Target life: ${op.stdLife.toLocaleString()} pcs</div>
+    </button>`).join('')}
+    <button onclick="document.getElementById('dual-op-modal').remove()" style="width:100%;padding:8px;background:none;border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:11px;cursor:pointer">Cancel</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function selectTCDualOp(opIdx){
+  document.getElementById('dual-op-modal')?.remove();
+  const tool = window._dualOpTool;
+  if(!tool) return;
+  const op = getDualOps(tool.code)[opIdx];
+  if(!op) return;
+  applyTCTool(tool, op.op, op.stdLife);
+}
+
+function applyTCTool(t, operation, stdLife){
+  document.getElementById('tc-operation').value = operation||t.operation||'—';
   document.getElementById('tc-make').value      = t.make||'—';
-  document.getElementById('tc-stdlife').value   = t.stdLife||'—';
+  document.getElementById('tc-stdlife').value   = stdLife||t.stdLife||'—';
+  const det=document.getElementById('tc-tooldetails');
+  const ind=document.getElementById('tc-lifeindicator');
   det.style.display='block';
   ind.style.display='none';
   document.getElementById('tc-lifeachieved').value='';
-  // Listen for life achieved input
   document.getElementById('tc-lifeachieved').oninput = function(){
-    const achieved = parseFloat(this.value)||0;
-    const std      = parseFloat(t.stdLife)||0;
+    const achieved=parseFloat(this.value)||0;
+    const std=parseFloat(stdLife||t.stdLife)||0;
     if(!achieved||!std){ind.style.display='none';return;}
-    const pct = Math.round((achieved/std)*100);
+    const pct=Math.round((achieved/std)*100);
     ind.style.display='block';
     if(pct>=90){
       ind.style.cssText='display:block;margin-bottom:9px;padding:7px 10px;border-radius:var(--r);font-size:11px;font-weight:600;text-align:center;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)';
@@ -2557,6 +2648,7 @@ function submitToolChange(){
   const lifeAch    = parseFloat(document.getElementById('tc-lifeachieved').value)||0;
   const newTool    = document.getElementById('tc-newtool').value;
   const remarks    = document.getElementById('tc-remarks').value;
+  const remarks2   = document.getElementById('tc-remarks2')?.value||'';
 
   if(!site)      {showToast('Select site','err');return;}
   if(!date)      {showToast('Select date','err');return;}
@@ -2585,6 +2677,7 @@ function submitToolChange(){
     changeReason:reason,
     newToolFitted:newTool||toolCode,
     remarks,
+    batchMark: remarks2,
     loggedAt:new Date().toISOString(),
   };
 
@@ -2611,6 +2704,7 @@ function submitToolChange(){
   document.getElementById('tc-lifeachieved').value='';
   document.getElementById('tc-newtool').value='';
   document.getElementById('tc-remarks').value='';
+  if(document.getElementById('tc-remarks2')) document.getElementById('tc-remarks2').value='';
   document.getElementById('tc-tooldetails').style.display='none';
   document.getElementById('tc-lifeindicator').style.display='none';
 
@@ -3204,6 +3298,274 @@ const COATING_REQUIRED = {
 
 function needsCoating(code){ return COATING_REQUIRED[code] === true; }
 
+// ═══════════════════════════════════════════════════════════
+// UNIQUE TOOL ID SYSTEM
+// ═══════════════════════════════════════════════════════════
+
+// Short name per SAP code (reconditionable tools only)
+const TOOL_SHORT_NAME = {
+  // ── A897 Shaft ───────────────────────────────────────────────
+  'CU01SC000257': 'A897S-D2x5',      // Center Drill Ø2x5
+  'CU01SC000258': 'A897S-D3.6CHF',   // Chamfer Tool D3.6
+  'CU01SC000259': 'A897S-D3RMR',     // Reamer Ø3.0
+  'CU16AF01118S': 'A897S-DCGT',      // DCGT Insert (dual-op)
+  // ── B128 ─────────────────────────────────────────────────────
+  'CU03AB36702B': 'B128-D29.95',     // PCD Reamer D29.95 4F
+  'CU01AC29902F': 'B128-D5xD7',      // SC Step Drill D5xD7
+  'CU01AC30002F': 'B128-D3',         // SC Drill D3
+  'CU04AA34402F': 'B128-D13.5BN',    // SC Ball Nose D13.5
+  'CU01AC30102F': 'B128-D7',         // SC Drill D7
+  'CU01AF00913B': 'B128-D6X12.4',    // SC Drill D6x12.4
+  'CU03AB37002B': 'B128-D5.97',      // PCD Reamer D5.97
+  'CU03AB37202B': 'B128-D8',         // PCD Reamer D8
+  'CU03AB57103B': 'B128-D15.5TRP',   // PCD OD Trippening D15.5
+  'CU01AD09602F': 'B128-D5xD6.5',    // SC Drill D5xD6.5
+  'CU03AB37402B': 'B128-D12.7',      // PCD Reamer D12.7
+  'CU03AB37302B': 'B128-D20.98',     // PCD Reamer D20.98
+  'CU03AB37102B': 'B128-D10.54',     // PCD Reamer D10.54
+  'CU03AB36802B': 'B128-D24',        // PCD Reamer D24 2F
+  'CU03AB36902B': 'B128-D27.97',     // PCD Reamer D27.97
+  // ── A506 Body ────────────────────────────────────────────────
+  'CU26AA02812B': 'A506B-D20WC',     // Woodruff Cutter D20
+  'CU04AA13604F': 'A506B-D16EM',     // HSS End Mill D16
+  'CU01AG06102F': 'A506B-D5xD7',     // SC Step Drill D5xD7
+  'CU01AG06202F': 'A506B-D13xD18',   // SC Step Drill D13xD18
+  'CU01AD07602F': 'A506B-D10',       // SC Drill D10
+  'CU26AA02306B': 'A506B-D18GC',     // Groove Cutter D18W5
+  'CU03AB17604B': 'A506B-D26xD28',   // PCD Reamer D26xD28 4F
+  'CU03AB17502B': 'A506B-D8',        // PCD Reamer D8 2F
+  // ── A897 Body ────────────────────────────────────────────────
+  'CU03AB22502B': 'A897B-D8B',       // PCD Reamer D8 Body side
+  'CU01AD02902A': 'A897B-D5.5',      // SC Drill D5.50
+  'CU01AD09502F': 'A897B-D4',        // SC Drill D4
+  'CU01AD09602F': 'A897B-D5xD6.5',   // SC Drill D5xD6.5
+  'CU04AA12904F': 'A897B-D13BN',     // SC Ball Nose D13
+  'CU01AD08102F': 'A897B-D2.05',     // SC Drill D2.05
+  'CU01AG06302F': 'A897B-D5SD',      // SC Step Drill D5
+  'CU03AB22402B': 'A897B-D6RMR',     // PCD Step Reamer D6
+  'CU03AB22602B': 'A897B-D8C',       // PCD Reamer D8 Cover side
+  'CU03AB22702B': 'A897B-D21',       // PCD Reamer D21 2F
+  // ── A944 ─────────────────────────────────────────────────────
+  'CU01AC28702F': 'A944-D5xD15',     // Step Drill Ø5xØ15
+  'CU01AC30802F': 'A944-D11.4',      // Core Drill D11.4
+  'CU03AB39702B': 'A944-D12.032',    // PCD Reamer D12.032
+  // ── B493 ─────────────────────────────────────────────────────
+  'CU01SC000267': 'B493-D22EM',      // D22 SC Endmill
+  'CU01SC000237': 'B493-D16EM',      // D16 SC Endmill
+  'CU01SC000236': 'B493-D10X0.4',    // D10X0.4 SC Endmill
+  'CU01SC000239': 'B493-D10X1.5',    // D10X1.5 SC Endmill
+  'CU01SC000047': 'B493-D9',         // D9 SC Drill
+  'CU01SC000238': 'B493-D6.85',      // D6.85 Drill
+  'CU01SC000048': 'B493-D4',         // D4 SC Drill
+  'CU01SC000050': 'B493-D10CHF',     // D10 Chamfer Tool
+  'CU01SC000264': 'B493-D6CHF',      // D6 Chamfer Tool
+  'A2024041603.12': 'B493-D9.01',    // SC TC Reamer D9.01
+  'A2024041603.3':  'B493-D8.7SD',   // SCTC Step Drill D8.7
+  // ── B487 ─────────────────────────────────────────────────────
+  'CU01SC000017': 'B487-D6CBN',      // D6 CBN Tool
+  'CU01SC000018': 'B487-D3FRM',      // D3 Form Tool
+};
+
+// Recon price master — new price + up to 3 recon cycle costs
+// Format: [newPrice, cycle1, cycle2, cycle3]
+const RECON_PRICE_MASTER = {
+  'CU01SC000257':[167,  0,   0,   0  ],
+  'CU01SC000258':[1900, 0,   0,   0  ],
+  'CU01SC000259':[1900, 0,   0,   0  ],
+  'CU03AB36702B':[10500,8000,8000,8000],
+  'CU01AC29902F':[3006, 404, 404, 404],
+  'CU01AC30002F':[1800, 283, 283, 283],
+  'CU04AA34402F':[0,    387, 387, 387],
+  'CU01AC30102F':[0,    220, 220, 220],
+  'CU01AF00913B':[0,    180, 180, 180],
+  'CU03AB37002B':[10500,8000,8000,8000],
+  'CU03AB37202B':[11500,8250,8250,8250],
+  'CU03AB57103B':[0,    0,   0,   0  ],
+  'CU01AD09602F':[3000, 315, 315, 315],
+  'CU03AB37402B':[20025,12450,12450,12450],
+  'CU03AB37302B':[23355,18500,18500,18500],
+  'CU03AB37102B':[18765,12500,12500,12500],
+  'CU03AB36802B':[0,    18500,18500,18500],
+  'CU03AB36902B':[0,    18500,18500,18500],
+  'CU26AA02812B':[0,    0,   0,   0  ],
+  'CU04AA13604F':[0,    0,   0,   0  ],
+  'CU01AG06102F':[0,    258, 258, 258],
+  'CU01AG06202F':[0,    387, 387, 387],
+  'CU01AD07602F':[6500, 214, 214, 214],
+  'CU26AA02306B':[0,    0,   0,   0  ],
+  'CU03AB17604B':[0,    0,   0,   0  ],
+  'CU03AB17502B':[0,    0,   0,   0  ],
+  'CU03AB22502B':[0,    8250,8250,8250],
+  'CU01AD02902A':[0,    0,   0,   0  ],
+  'CU01AD09502F':[0,    120, 120, 120],
+  'CU04AA12904F':[0,    0,   0,   0  ],
+  'CU01AD08102F':[1760, 0,   0,   0  ],
+  'CU01AG06302F':[0,    0,   0,   0  ],
+  'CU03AB22402B':[0,    0,   0,   0  ],
+  'CU03AB22602B':[0,    8250,8250,8250],
+  'CU03AB22702B':[0,    0,   0,   0  ],
+  'CU01AC28702F':[0,    0,   0,   0  ],
+  'CU01AC30802F':[0,    969, 969, 969],
+  'CU03AB39702B':[22000,0,   0,   0  ],
+  'CU01SC000267':[17000,790, 790, 790],
+  'CU01SC000237':[9200, 525, 525, 525],
+  'CU01SC000236':[4000, 308, 308, 308],
+  'CU01SC000239':[4000, 308, 308, 308],
+  'CU01SC000047':[6800, 528, 528, 528],
+  'CU01SC000238':[4130, 299, 299, 299],
+  'CU01SC000048':[3600, 180, 180, 180],
+  'CU01SC000050':[4500, 420, 420, 420],
+  'CU01SC000264':[1500, 180, 180, 180],
+  'A2024041603.12':[4500,0,  0,   0  ],
+  'A2024041603.3':[4400, 0,  0,   0  ],
+  'CU01SC000017':[0,    2500,2500,0  ],
+  'CU01SC000018':[0,    0,   0,   0  ],
+};
+
+// ── Unique ID Store ───────────────────────────────────────
+function getUniqueIDStore(){
+  return JSON.parse(localStorage.getItem('atf_unique_ids')||'{}');
+}
+function saveUniqueIDStore(data){
+  localStorage.setItem('atf_unique_ids',JSON.stringify(data));
+}
+
+// Get next serial for a SAP code
+function getNextSerial(sapCode){
+  const store=getUniqueIDStore();
+  return (store[sapCode]?.lastSerial||0)+1;
+}
+
+// Generate unique IDs for a batch
+function generateUniqueIDs(sapCode, qty){
+  const store  = getUniqueIDStore();
+  const spec   = TOOL_SHORT_NAME[sapCode];
+  if(!spec) return []; // not a reconditionable tool
+  const last   = store[sapCode]?.lastSerial||0;
+  const ids    = [];
+  for(let i=1;i<=qty;i++){
+    const serial = String(last+i).padStart(3,'0');
+    ids.push(`A-${spec}-${serial}`);
+  }
+  return ids;
+}
+
+// Register generated IDs into store (DC Inward receipt — tools physically arrived)
+function registerUniqueIDs(sapCode, ids, dcNo, date, newPrice){
+  const store = getUniqueIDStore();
+  if(!store[sapCode]) store[sapCode]={lastSerial:0, tools:{}};
+  const last = store[sapCode].lastSerial || 0;
+  ids.forEach((id,i)=>{
+    store[sapCode].tools[id]={
+      id, sapCode, dcNo, receivedDate:date,
+      newPrice: newPrice||0,
+      status:'office',
+      reconCycles:0,
+      history:[{
+        event:'received', date, dcNo,
+        note:`New tool received — DC ${dcNo}`,
+        price:newPrice||0
+      }]
+    };
+  });
+  store[sapCode].lastSerial = last + ids.length;
+  saveUniqueIDStore(store);
+}
+
+// Get all active IDs for a SAP code at a given location
+function getIDsAtLocation(sapCode, location){
+  const store=getUniqueIDStore();
+  const tools=store[sapCode]?.tools||{};
+  return Object.values(tools).filter(t=>
+    location==='any' ? t.status!=='scrapped' : t.status===location
+  );
+}
+
+// Get tool record by unique ID
+function getToolByID(uniqueID){
+  const store=getUniqueIDStore();
+  for(const sapCode of Object.keys(store)){
+    if(store[sapCode].tools?.[uniqueID]){
+      return store[sapCode].tools[uniqueID];
+    }
+  }
+  return null;
+}
+
+// Update tool status and add history event
+function updateToolID(uniqueID, newStatus, event, extraData={}){
+  const store=getUniqueIDStore();
+  for(const sapCode of Object.keys(store)){
+    if(store[sapCode].tools?.[uniqueID]){
+      const tool=store[sapCode].tools[uniqueID];
+      tool.status=newStatus;
+      tool.history.push({event, date:new Date().toISOString().split('T')[0], ...extraData});
+      if(event==='recon_sent') tool.reconCycles=(tool.reconCycles||0)+1;
+      saveUniqueIDStore(store);
+      return tool;
+    }
+  }
+}
+
+// Get price for a tool based on its recon cycle count
+function getPriceForCycle(sapCode, reconCycles){
+  const master=RECON_PRICE_MASTER[sapCode];
+  if(!master) return 0;
+  if(reconCycles===0) return master[0]; // new tool price
+  return master[Math.min(reconCycles, master.length-1)] || 0;
+}
+
+// Is this tool reconditionable?
+function isReconditionable(sapCode){
+  return !!TOOL_SHORT_NAME[sapCode];
+}
+
+// ═══════════════════════════════════════════════════════════
+// DUAL OPERATION TOOLS — same SAP code, different operations
+// ═══════════════════════════════════════════════════════════
+const DUAL_OPERATION_TOOLS = {
+  'CU16AF01118S': [
+    {op:'OD Turning',   stdLife:1500, label:'OD Turning — std life 1,500 pcs'},
+    {op:'Back Chamfer', stdLife:5000, label:'Back Chamfer — std life 5,000 pcs'},
+  ],
+  'CU01SC000257': [
+    {op:'Centering Station 1', stdLife:15000, label:'Centering Station 1 — std life 15,000 pcs'},
+    {op:'Centering Station 2', stdLife:15000, label:'Centering Station 2 — std life 15,000 pcs'},
+  ],
+};
+
+function isDualOpTool(sapCode){ return !!DUAL_OPERATION_TOOLS[sapCode]; }
+function getDualOps(sapCode){ return DUAL_OPERATION_TOOLS[sapCode]||[]; }
+
+// ═══════════════════════════════════════════════════════════
+// MULTI-PRODUCT MACHINES — Body/Cover, Housing/Plunger
+// ═══════════════════════════════════════════════════════════
+const MULTI_PRODUCT_COMPONENTS = {
+  'A506': {variants:['A506 Body','A506 Cover'], label:'Which product?'},
+  'B128': {variants:['B128 Body','B128 Cover'], label:'Which product is running?', simultaneous:true},
+  'A897': {variants:['A897 Body','A897 Cover'], label:'Which product?'},
+  'B487': {variants:['B487 Housing','B487 Plunger'], label:'Which variant?'},
+};
+
+// B487 tool restriction by variant
+const B487_VARIANT_TOOLS = {
+  'B487 Housing': ['CU04INSC0083'],  // CCGW Insert only
+  'B487 Plunger': ['CU01SC000017','CU01SC000018'], // CBN + Form Tool
+};
+
+// Get variant group for a component
+function getMultiProductGroup(comp){
+  if(!comp) return null;
+  const prefix=comp.split(' ')[0];
+  return MULTI_PRODUCT_COMPONENTS[prefix]||null;
+}
+
+// Check if component needs variant selection
+function needsVariantSelection(comp){
+  return !!getMultiProductGroup(comp);
+}
+
+
 // ═══════════════════════════════════════════
 // TOOL PLANNING DATA — imported from Mahesh Excel
 // Production plan, min/max, recon rotation all calculated
@@ -3387,15 +3749,25 @@ function getToolPrice(code){
 }
 
 async function initDCInward(){
-  document.getElementById('dc-date').value = new Date().toISOString().split('T')[0];
-  populateDCDropdowns();
-  if(!dcItems.length) addDCItem();
-  await renderDCHistory();
+  // Set date for receipt mode
+  const dateEl = document.getElementById('dc-date');
+  if(dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+  // Init supervisor dropdown
+  const supSel = document.getElementById('dc-supervisor');
+  if(supSel && supSel.options.length <= 1){
+    const sups = getSupervisors();
+    supSel.innerHTML = '<option value="">— Select —</option>' +
+      sups.map(s=>`<option value="${s}">${s}</option>`).join('');
+  }
+  // Start in PO mode
+  setDCMode('po');
+  if(!poItems.length) addPOItem();
+  renderDCHistory();
 }
 
 async function renderDCHistory(){
-  const c = document.getElementById('dc-history-list');
-  c.innerHTML = '<div style="text-align:center;padding:14px;color:var(--fog);font-size:11px">🔄 Loading...</div>';
+  const c = document.getElementById('dc-history') || document.getElementById('dc-history-list');
+  if(!c) return;
   
   let data = await fetchFromSheets('dcinward');
   if(data && data.length){
@@ -3562,24 +3934,32 @@ function calcDCTotal(){
 }
 
 function submitDCInward(){
-  const dcNo  = document.getElementById('dc-no').value.trim();
-  const date  = document.getElementById('dc-date').value;
-  const site  = document.getElementById('dc-site').value;
-  const sup   = document.getElementById('dc-supervisor').value;
+  const dcNo = document.getElementById('dc-no').value.trim();
+  const date = document.getElementById('dc-date').value;
+  const site = document.getElementById('dc-site').value;
+  const sup  = document.getElementById('dc-supervisor').value;
   if(!dcNo){showToast('Enter DC number','err');return;}
   if(!date){showToast('Select date','err');return;}
   if(!site){showToast('Select site','err');return;}
-  if(!sup){showToast('Select supervisor','err');return;}
+  if(!sup) {showToast('Select supervisor','err');return;}
   const validItems=dcItems.filter(i=>i.toolCode&&i.qty>0);
   if(!validItems.length){showToast('Add at least one tool with qty','err');return;}
 
   const siteData=getSiteData();
   const total=validItems.reduce((s,i)=>s+(i.qty||0)*(i.unitPrice||0),0);
+
+  // Generate unique IDs for reconditionable tools
+  const itemsWithIDs=validItems.map(item=>{
+    const ids=isReconditionable(item.toolCode)?generateUniqueIDs(item.toolCode,item.qty):[];
+    if(ids.length>0) registerUniqueIDs(item.toolCode,ids,dcNo,date,item.unitPrice||0);
+    return{...item, uniqueIDs:ids};
+  });
+
   const entry={
     id:'dc'+Date.now(),dcNo,date,
     site,siteName:siteData[site]?.name||site,
     supervisor:sup,
-    items:validItems.map(i=>({...i})),
+    items:itemsWithIDs,
     totalValue:total,
     remarks:document.getElementById('dc-remarks').value,
     loggedAt:new Date().toISOString(),
@@ -3587,22 +3967,536 @@ function submitDCInward(){
   dcLogs.unshift(entry);
   localStorage.setItem('atf_dc_logs',JSON.stringify(dcLogs));
 
-  // Push to sheets
   if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'DC_INWARD'})});}catch(e){}
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...entry,type:'DC_INWARD'})});}catch(e){}
   }
 
-  // Reset
+  const reconItems=itemsWithIDs.filter(i=>i.uniqueIDs?.length>0);
+  if(reconItems.length) showIDGeneratedModal(reconItems);
+  else showToast('✅ DC '+dcNo+' logged — ₹'+total.toLocaleString('en-IN'),'ok');
+
   dcItems=[];dcItemCount=0;
   ['dc-no','dc-remarks'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('dc-site').value='';
-  document.getElementById('dc-supervisor').value='';
-  addDCItem();
-  renderDCHistory();
-  showToast('✅ DC '+dcNo+' logged — ₹'+total.toLocaleString('en-IN'),'ok');
+  ['dc-site','dc-supervisor'].forEach(id=>document.getElementById(id).value='');
+  addDCItem(); renderDCHistory();
+}
+
+function showIDGeneratedModal(items){
+  const ex=document.getElementById('id-generated-modal');if(ex)ex.remove();
+  const modal=document.createElement('div');
+  modal.id='id-generated-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:700;overflow-y:auto;padding:16px';
+  let html2=`<div style="background:var(--steel);border:1px solid var(--iron);border-radius:var(--r2);padding:18px;max-width:380px;margin:20px auto">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--green);margin-bottom:4px">✅ Unique IDs Generated</div>
+    <div style="font-size:11px;color:var(--fog);margin-bottom:14px;line-height:1.6">Etch or mark these IDs on each physical tool before sending to site.</div>`;
+  items.forEach(item=>{
+    html2+=`<div style="background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);padding:10px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">${item.toolCode}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${(item.uniqueIDs||[]).map(id=>`<span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:3px 8px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:5px;color:var(--green)">${id}</span>`).join('')}
+      </div></div>`;
+  });
+  window._lastGeneratedIDs=items;
+  html2+=`<div style="display:flex;gap:8px;margin-top:10px">
+    <button onclick="navigator.clipboard.writeText(window._lastGeneratedIDs.map(i=>i.toolCode+\':\\n\'+i.uniqueIDs.join(\'\\n\')).join(\'\\n\\n\')).then(()=>showToast(\'📋 Copied\',\'ok\'))" style="flex:1;padding:10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">📋 Copy IDs</button>
+    <button onclick="document.getElementById(\'id-generated-modal\').remove()" style="flex:1;padding:10px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;cursor:pointer">✅ Done</button>
+  </div></div>`;
+  modal.innerHTML=html2;
+  document.body.appendChild(modal);
 }
 
 // renderDCHistory moved to async version above
+// ═══════════════════════════════════════════════════════════
+// DC INWARD — TWO MODE SYSTEM (PO Generation + Receipt)
+// ═══════════════════════════════════════════════════════════
+
+let currentDCMode = 'po';
+let poItems = [];
+let poItemCount = 0;
+
+function setDCMode(mode){
+  currentDCMode = mode;
+  const poSec  = document.getElementById('dc-po-section');
+  const rcvSec = document.getElementById('dc-recv-section');
+  const btnPO  = document.getElementById('dc-mode-po');
+  const btnRCV = document.getElementById('dc-mode-recv');
+
+  if(mode === 'po'){
+    poSec.style.display  = 'block';
+    rcvSec.style.display = 'none';
+    btnPO.style.background  = 'rgba(245,158,11,.25)';
+    btnPO.style.borderColor = 'rgba(245,158,11,.8)';
+    btnPO.style.color       = 'var(--amber)';
+    btnRCV.style.background  = 'rgba(16,185,129,.08)';
+    btnRCV.style.borderColor = 'rgba(16,185,129,.2)';
+    btnRCV.style.color       = 'var(--fog)';
+  } else {
+    poSec.style.display  = 'none';
+    rcvSec.style.display = 'block';
+    btnRCV.style.background  = 'rgba(16,185,129,.2)';
+    btnRCV.style.borderColor = 'rgba(16,185,129,.6)';
+    btnRCV.style.color       = 'var(--green)';
+    btnPO.style.background  = 'rgba(245,158,11,.08)';
+    btnPO.style.borderColor = 'rgba(245,158,11,.2)';
+    btnPO.style.color       = 'var(--fog)';
+    renderOnOrderIDs();
+  }
+}
+
+// ── PO Item management ───────────────────────────────────────
+function addPOItem(){
+  poItemCount++;
+  const id = 'poi'+poItemCount;
+  poItems.push({id, toolCode:'', name:'', qty:0, unitPrice:0});
+  renderPOItems();
+}
+
+function renderPOItems(){
+  const c = document.getElementById('po-items-container');
+  const toolData = getToolCodes();
+  const allCodes = Object.values(toolData).flat()
+    .filter((t,i,a) => isReconditionable(t.code) && a.findIndex(x=>x.code===t.code)===i)
+    .sort((a,b)=>a.code.localeCompare(b.code));
+
+  c.innerHTML = poItems.map((item,i)=>`
+    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:10px;margin-bottom:7px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <div style="width:20px;height:20px;background:var(--amber);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
+        <span style="font-size:12px;font-weight:600;color:var(--amber);flex:1">Tool Line ${i+1}</span>
+        <button onclick="removePOItem('${item.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">×</button>
+      </div>
+      <div style="margin-bottom:7px">
+        <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">SAP Code (Reconditionable only)</label>
+        <select onchange="onPOToolChange('${item.id}',this.value)" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+          <option value="">— Select tool —</option>
+          ${allCodes.map(t=>`<option value="${t.code}" ${item.toolCode===t.code?'selected':''}>${t.code} — ${t.name}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        <div>
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">Qty Ordered</label>
+          <input type="number" value="${item.qty||''}" min="1" placeholder="0" oninput="updatePOItem('${item.id}','qty',this.value)"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white)"/>
+        </div>
+        <div>
+          <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">Unit Price (₹)</label>
+          <input type="number" value="${item.unitPrice||''}" min="0" placeholder="0" oninput="updatePOItem('${item.id}','unitPrice',this.value)"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--white)"/>
+        </div>
+      </div>
+      ${item.toolCode&&item.qty>0?`<div style="margin-top:6px;padding:5px 8px;background:rgba(245,158,11,.1);border-radius:5px;font-size:10px;color:var(--amber)">
+        🔖 Will generate ${item.qty} IDs with prefix: A-${TOOL_SHORT_NAME[item.toolCode]||item.toolCode}-###
+      </div>`:''}
+    </div>`).join('');
+}
+
+function onPOToolChange(id,code){
+  const item=poItems.find(i=>i.id===id);
+  if(item){item.toolCode=code;}
+  renderPOItems();
+}
+function updatePOItem(id,field,val){
+  const item=poItems.find(i=>i.id===id);
+  if(item) item[field]=field==='qty'||field==='unitPrice'?(parseFloat(val)||0):val;
+  renderPOItems();
+}
+function removePOItem(id){
+  if(poItems.length===1){showToast('At least one item required','err');return;}
+  poItems=poItems.filter(i=>i.id!==id);renderPOItems();
+}
+
+// ── Generate IDs for PO ──────────────────────────────────────
+function generatePOIds(){
+  const poRef    = document.getElementById('po-ref').value.trim();
+  const supplier = document.getElementById('po-supplier').value.trim();
+  // Highlight PO ref if empty
+  const poRefEl = document.getElementById('po-ref');
+  if(!poRef){
+    poRefEl.style.border='2px solid var(--red)';
+    poRefEl.style.outline='none';
+    poRefEl.focus();
+    // Show inline error banner
+    const banner=document.getElementById('po-ref-error')||document.createElement('div');
+    banner.id='po-ref-error';
+    banner.style.cssText='color:var(--red);font-size:11px;font-weight:600;padding:5px 8px;margin-top:4px;background:rgba(239,68,68,.08);border-radius:5px;border:1px solid rgba(239,68,68,.2)';
+    banner.textContent='⚠️ PO Reference Number is required — enter PO number before generating IDs';
+    poRefEl.parentNode.appendChild(banner);
+    return;
+  } else {
+    poRefEl.style.border='';
+    const banner=document.getElementById('po-ref-error');
+    if(banner) banner.remove();
+  }
+  const validItems = poItems.filter(i=>i.toolCode && i.qty>0);
+  if(!validItems.length){
+    showToast('Select a tool code and enter qty ordered','err');
+    return;
+  }
+
+  const store = getUniqueIDStore();
+  const generated = [];
+
+  validItems.forEach(item=>{
+    const short = TOOL_SHORT_NAME[item.toolCode];
+    if(!short){ showToast('No short name for '+item.toolCode,'err'); return; }
+
+    if(!store[item.toolCode]) store[item.toolCode] = {lastSerial:0, tools:{}};
+    const last = store[item.toolCode].lastSerial || 0;
+    const ids  = [];
+
+    for(let i=1; i<=item.qty; i++){
+      const serial = String(last + i).padStart(3,'0');
+      const id     = `A-${short}-${serial}`;
+      ids.push(id);
+      store[item.toolCode].tools[id] = {
+        id,
+        sapCode:   item.toolCode,
+        poRef,
+        supplier,
+        newPrice:  item.unitPrice || 0,
+        status:    'on-order',
+        reconCycles: 0,
+        history: [{
+          event:    'po-generated',
+          date:     new Date().toISOString().split('T')[0],
+          poRef,
+          supplier,
+          note:     `PO generated — ${supplier||'supplier'} · ${poRef}`
+        }]
+      };
+    }
+    // Advance serial counter AFTER generating all IDs for this SAP code
+    store[item.toolCode].lastSerial = last + item.qty;
+    generated.push({ ...item, uniqueIDs: ids });
+  });
+
+  // Save entire store once, atomically
+  saveUniqueIDStore(store);
+
+  // Show modal
+  showPOIDsModal(generated, poRef, supplier);
+}
+
+function registerUniqueIDsAsOnOrder(sapCode, ids, poRef, supplier, unitPrice){
+  const store = getUniqueIDStore();
+  if(!store[sapCode]) store[sapCode]={lastSerial:0, tools:{}};
+  ids.forEach((id,i)=>{
+    const serial = store[sapCode].lastSerial + i + 1;
+    store[sapCode].tools[id]={
+      id, sapCode, poRef, supplier,
+      newPrice: unitPrice||0,
+      status:'on-order',
+      reconCycles:0,
+      history:[{
+        event:'po-generated',
+        date:new Date().toISOString().split('T')[0],
+        poRef, supplier,
+        note:`PO generated — ${supplier||'supplier'} · ${poRef}`
+      }]
+    };
+    store[sapCode].lastSerial = serial;
+  });
+  saveUniqueIDStore(store);
+}
+
+function showPOIDsModal(items, poRef, supplier){
+  const ex=document.getElementById('po-ids-modal');if(ex)ex.remove();
+  const modal=document.createElement('div');
+  modal.id='po-ids-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:700;overflow-y:auto;padding:16px';
+
+  let html2=`<div style="background:var(--steel);border:2px solid rgba(245,158,11,.4);border-radius:var(--r2);padding:18px;max-width:400px;margin:20px auto">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--amber);margin-bottom:2px">📋 Unique IDs Generated for PO</div>
+    <div style="font-size:11px;color:var(--fog);margin-bottom:4px">PO Ref: <strong style="color:var(--white)">${poRef}</strong></div>
+    <div style="font-size:11px;color:var(--fog);margin-bottom:14px;line-height:1.6">Add these IDs to your Tally PO. Supplier will etch each ID on the corresponding tool before dispatch.</div>`;
+
+  items.forEach(item=>{
+    const short=TOOL_SHORT_NAME[item.toolCode]||item.toolCode;    html2+=`<div style="background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);padding:10px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">${item.toolCode}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${item.uniqueIDs.map(id=>`<span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:3px 8px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--amber)">${id}</span>`).join('')}
+      </div>
+    </div>`;
+  });
+
+  window._lastPOIDs = items;
+  html2+=`<div style="display:flex;gap:8px;margin-top:12px">
+    <button onclick="copyPOIds()" style="flex:1;padding:10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">📋 Copy All IDs</button>
+    <button onclick="document.getElementById('po-ids-modal').remove();resetPOForm()" style="flex:1;padding:10px;background:linear-gradient(135deg,#b45309,#f59e0b);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;cursor:pointer">✅ Done</button>
+  </div></div>`;
+  modal.innerHTML=html2;
+  document.body.appendChild(modal);
+}
+
+function copyPOIds(){
+  const items=window._lastPOIDs||[];
+  const text=items.map(i=>`${i.toolCode}:\n${i.uniqueIDs.join('\n')}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(()=>showToast('📋 IDs copied','ok'));
+}
+
+function resetPOForm(){
+  poItems=[]; poItemCount=0;
+  document.getElementById('po-ref').value='';
+  document.getElementById('po-supplier').value='';
+  addPOItem();
+}
+
+// ── Receipt confirmation — show on-order IDs ─────────────────
+function renderOnOrderIDs(){
+  const store = getUniqueIDStore();
+  const container = document.getElementById('dc-onorder-container');
+  if(!container) return;
+
+  const onOrderBySAP = {};
+  Object.entries(store).forEach(([sap,data])=>{
+    Object.values(data.tools||{}).forEach(tool=>{
+      if(tool.status==='on-order'){
+        if(!onOrderBySAP[sap]) onOrderBySAP[sap]=[];
+        onOrderBySAP[sap].push(tool);
+      }
+    });
+  });
+
+  const sapCodes = Object.keys(onOrderBySAP);
+  if(!sapCodes.length){
+    container.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px">📋 Pending IDs (On Order)</div>
+    <div style="padding:12px;background:var(--iron);border-radius:var(--r);font-size:11px;color:var(--fog);text-align:center">No pending PO IDs. Generate IDs first using "Generate IDs for PO" mode.</div>`;
+    return;
+  }
+
+  let html2=`<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📋 Pending IDs — Select what arrived:</div>`;
+  sapCodes.forEach(sap=>{
+    const tools = onOrderBySAP[sap];
+    html2+=`<div style="background:var(--iron);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:10px;margin-bottom:7px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:7px">${sap}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${tools.map(t=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:3px 8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:5px">
+          <input type="checkbox" id="recv-${t.id}" value="${t.id}" style="accent-color:var(--amber)"/>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--amber)">${t.id}</span>
+          <span style="font-size:9px;color:var(--fog)">PO:${t.poRef||'—'}</span>
+        </label>`).join('')}
+      </div>
+      <button onclick="selectAllOnOrderIDs('${sap}')" style="margin-top:7px;font-size:9px;padding:3px 8px;background:none;border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--amber);cursor:pointer;font-family:'Inter',sans-serif">✅ Select All</button>
+    </div>`;
+  });
+  container.innerHTML=html2;
+}
+
+function selectAllOnOrderIDs(sapCode){
+  const store=getUniqueIDStore();
+  Object.values(store[sapCode]?.tools||{}).forEach(t=>{
+    if(t.status==='on-order'){
+      const cb=document.getElementById('recv-'+t.id);
+      if(cb) cb.checked=true;
+    }
+  });
+}
+
+function submitDCReceipt(){
+  const dcNo = document.getElementById('dc-no').value.trim();
+  const date = document.getElementById('dc-date').value;
+  const site = document.getElementById('dc-site').value;
+  const sup  = document.getElementById('dc-supervisor').value;
+  if(!dcNo){showToast('Enter DC number','err');return;}
+  if(!date){showToast('Select date','err');return;}
+
+  // Collect all checked IDs
+  const checkedBoxes = document.querySelectorAll('#dc-onorder-container input[type=checkbox]:checked');
+  if(!checkedBoxes.length){showToast('Select at least one ID received','err');return;}
+
+  const confirmed = [];
+  checkedBoxes.forEach(cb=>{
+    const uniqueID = cb.value;
+    const tool = getToolByID(uniqueID);
+    if(tool){
+      updateToolID(uniqueID,'office','received',{dcNo,date,site,note:`Received — DC ${dcNo}`});
+      confirmed.push(uniqueID);
+    }
+  });
+
+  // Log to DC history
+  const entry={
+    id:'dc'+Date.now(),dcNo,date,site,supervisor:sup,
+    mode:'receipt',confirmedIDs:confirmed,
+    remarks:document.getElementById('dc-remarks').value,
+    loggedAt:new Date().toISOString(),
+  };
+  dcLogs.unshift(entry);
+  localStorage.setItem('atf_dc_logs',JSON.stringify(dcLogs));
+
+  if(cpcSettings.sheetsUrl){
+    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...entry,type:'DC_RECEIPT'})});}catch(e){}
+  }
+
+  showToast(`✅ Receipt confirmed — ${confirmed.length} tools received`,'ok');
+  renderOnOrderIDs();
+  renderDCHistory();
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+// MULTI-SELECT UNIQUE ID for Tool Outward
+// ═══════════════════════════════════════════════════════════
+function showMultiIDSelect(itemId, sapCode, site){
+  const ex=document.getElementById('multi-id-modal');if(ex)ex.remove();
+  const loc = site==='site1'?'site1':site==='site2'?'site2':'office';
+  const availIDs = getIDsAtLocation(sapCode, loc);
+  if(!availIDs.length){
+    showToast('No IDs available at this location for '+sapCode,'err');return;
+  }
+
+  const modal=document.createElement('div');
+  modal.id='multi-id-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:700;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  const item = outItems.find(i=>i.id===itemId);
+  const selected = item?.selectedIDs||[];
+
+  modal.innerHTML=`<div style="background:var(--steel);border:2px solid rgba(245,158,11,.4);border-radius:var(--r2);padding:18px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--amber);margin-bottom:3px">🔖 Select Tool IDs</div>
+    <div style="font-size:11px;color:var(--fog);margin-bottom:12px">${sapCode} — Select all IDs being sent</div>
+    <div style="display:flex;gap:7px;margin-bottom:10px">
+      <button onclick="selectAllMultiIDs()" style="flex:1;padding:7px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:5px;color:var(--amber);font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">✅ Select All</button>
+      <button onclick="clearAllMultiIDs()" style="flex:1;padding:7px;background:var(--iron);border:1px solid var(--slate);border-radius:5px;color:var(--fog);font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">✗ Clear</button>
+    </div>
+    <div id="multi-id-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+      ${availIDs.map(t=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--iron);border:1px solid ${selected.includes(t.id)?'rgba(245,158,11,.5)':'var(--slate)'};border-radius:var(--r);cursor:pointer">
+        <input type="checkbox" id="mid-${t.id}" value="${t.id}" ${selected.includes(t.id)?'checked':''} onchange="updateMultiIDSelection()" style="accent-color:var(--amber);width:16px;height:16px"/>
+        <div style="flex:1">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--amber)">${t.id}</div>
+          <div style="font-size:10px;color:var(--fog)">Recon cycles: ${t.reconCycles||0} · Status: ${t.status}</div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:${(t.reconCycles||0)===0?'#60a5fa':'var(--green)'}">
+          ${(t.reconCycles||0)===0?'New':'Recon '+(t.reconCycles||0)}
+        </div>
+      </label>`).join('')}
+    </div>
+    <div id="multi-id-summary" style="font-size:12px;font-weight:600;color:var(--amber);margin-bottom:10px;padding:7px;background:rgba(245,158,11,.08);border-radius:5px;text-align:center">
+      0 IDs selected
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('multi-id-modal').remove()" style="flex:1;padding:10px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer">Cancel</button>
+      <button onclick="confirmMultiIDSelection('${itemId}')" style="flex:2;padding:10px;background:linear-gradient(135deg,#b45309,#f59e0b);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;cursor:pointer">✅ Confirm Selection</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  updateMultiIDSelection();
+}
+
+function updateMultiIDSelection(){
+  const checks=document.querySelectorAll('#multi-id-list input[type=checkbox]');
+  const count=[...checks].filter(c=>c.checked).length;
+  const sumEl=document.getElementById('multi-id-summary');
+  if(sumEl) sumEl.textContent=count>0?`${count} ID${count>1?'s':''} selected — ready to send`:'No IDs selected yet';
+  // Update border colors
+  checks.forEach(cb=>{
+    const label=cb.closest('label');
+    if(label) label.style.borderColor=cb.checked?'rgba(245,158,11,.5)':'var(--slate)';
+  });
+}
+
+function selectAllMultiIDs(){
+  document.querySelectorAll('#multi-id-list input[type=checkbox]').forEach(c=>{c.checked=true;});
+  updateMultiIDSelection();
+}
+function clearAllMultiIDs(){
+  document.querySelectorAll('#multi-id-list input[type=checkbox]').forEach(c=>{c.checked=false;});
+  updateMultiIDSelection();
+}
+
+function confirmMultiIDSelection(itemId){
+  const selected=[...document.querySelectorAll('#multi-id-list input[type=checkbox]:checked')].map(c=>c.value);
+  if(!selected.length){showToast('Select at least one ID','err');return;}
+  const item=outItems.find(i=>i.id===itemId);
+  if(item){
+    item.selectedIDs=selected;
+    item.qty=selected.length;
+  }
+  document.getElementById('multi-id-modal').remove();
+  renderOutItems();
+}
+
+// ═══════════════════════════════════════════
+// MULTI-PRODUCT VARIANT SELECTION — Shift Log
+// ═══════════════════════════════════════════
+function showShiftVariantPopup(comp){
+  const group=getMultiProductGroup(comp);
+  if(!group) return;
+  const ex=document.getElementById('shift-variant-modal');if(ex)ex.remove();
+  const modal=document.createElement('div');
+  modal.id='shift-variant-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:700;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML=`<div style="background:var(--steel);border:2px solid rgba(245,158,11,.4);border-radius:var(--r2);padding:18px;max-width:340px;width:100%">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--amber);margin-bottom:3px">${group.label}</div>
+    <div style="font-size:11px;color:var(--fog);margin-bottom:14px">Select which product these machines are running this shift.</div>
+    ${group.variants.map(v=>`
+    <button onclick="applyShiftVariant('${comp}','${v}')" style="width:100%;text-align:left;padding:12px 14px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);margin-bottom:8px;cursor:pointer;display:block">
+      <div style="font-size:14px;font-weight:700;color:var(--white)">${v}</div>
+    </button>`).join('')}
+    ${group.simultaneous?`
+    <button onclick="applyShiftVariant('${comp}','BOTH')" style="width:100%;text-align:left;padding:12px 14px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:var(--r);margin-bottom:8px;cursor:pointer;display:block">
+      <div style="font-size:14px;font-weight:700;color:#c4b5fd">Both — Body &amp; Cover simultaneously</div>
+      <div style="font-size:10px;color:var(--fog);margin-top:2px">Enter production separately for each</div>
+    </button>`:''}
+    <button onclick="document.getElementById('shift-variant-modal').remove()" style="width:100%;padding:8px;background:none;border:1px solid var(--slate);border-radius:var(--r);color:var(--fog);font-family:'Inter',sans-serif;font-size:11px;cursor:pointer">Cancel</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function applyShiftVariant(baseComp, variant){
+  document.getElementById('shift-variant-modal')?.remove();
+  if(!window.shiftVariants) window.shiftVariants={};
+  window.shiftVariants[baseComp]=variant;
+  showToast(`✅ ${baseComp}: ${variant==='BOTH'?'Both Body + Cover':variant}`,'ok');
+  renderMachineLog();
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// DUAL PRODUCTION CAPTURE — Body+Cover qty per machine
+// ═══════════════════════════════════════════════════════════
+function getDualProdLabels(comp){
+  const group = getMultiProductGroup(comp);
+  if(!group) return null;
+  const variants = group.variants;
+  // Extract short labels: "B128 Body" → "Body", "B487 Housing" → "Housing"
+  return variants.map(v=>v.split(' ').slice(1).join(' ')||v);
+}
+
+function renderDualProdFields(comp, machineNo){
+  const labels = getDualProdLabels(comp);
+  if(!labels) return '';
+  const key0 = `prod_${machineNo}_${labels[0].toLowerCase()}`;
+  const key1 = `prod_${machineNo}_${labels[1].toLowerCase()}`;
+  return `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+    <div>
+      <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">${labels[0]} Pcs</label>
+      <input type="number" id="${key0}" placeholder="0" min="0"
+        oninput="onDualProdInput('${machineNo}','${labels[0]}','${labels[1]}',this.value)"
+        style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(59,130,246,.25);border-radius:5px;padding:6px 8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:#60a5fa"/>
+    </div>
+    <div>
+      <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">${labels[1]} Pcs</label>
+      <input type="number" id="${key1}" placeholder="0" min="0"
+        style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(16,185,129,.25);border-radius:5px;padding:6px 8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--green)"/>
+    </div>
+  </div>`;
+}
+
+function onDualProdInput(machineNo, label0, label1, val){
+  const parsed = parseFloat(val)||0;
+  if(parsed === 0){
+    // Focus on second field
+    const key1 = `prod_${machineNo}_${label1.toLowerCase()}`;
+    setTimeout(()=>{document.getElementById(key1)?.focus();},100);
+  }
+}
 
 // ═══════════════════════════════════════════
 // TOOL OUTWARD MODULE
@@ -3625,8 +4519,22 @@ function renderOutItems(){
   const c=document.getElementById('out-items-container');
   const toolData=getToolCodes();
   const allComps=Object.keys(toolData).filter(k=>toolData[k].length>0);
+  const site=document.getElementById('out-site')?.value||'';
+
   c.innerHTML=outItems.map((item,i)=>{
     const tools=toolData[item.component]||[];
+    const isRecon=item.toolCode&&isReconditionable(item.toolCode);
+    // Get available unique IDs at this site
+    const loc=site==='site1'?'site1':site==='site2'?'site2':'any';
+    const availIDs=isRecon?getIDsAtLocation(item.toolCode,loc):[];
+    // Price info based on selected unique ID
+    const toolRecord=item.uniqueID?getToolByID(item.uniqueID):null;
+    const cycleNum=toolRecord?(toolRecord.reconCycles||0):0;
+    const cyclePrice=item.toolCode?getPriceForCycle(item.toolCode,cycleNum):0;
+    const isFirstOutward=cycleNum===0;
+    const maxRecon=TOOL_PLANNING[item.toolCode]?.maxRecon||0;
+    const remainingRecon=maxRecon-cycleNum;
+
     return`<div style="background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.2);border-radius:var(--r);padding:10px;margin-bottom:7px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
         <div style="width:20px;height:20px;background:var(--spark);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
@@ -3638,17 +4546,29 @@ function renderOutItems(){
           <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Component</label>
           <select onchange="onOutCompChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
             <option value="">— Select —</option>
-            ${allComps.map(c=>`<option value="${c}"${item.component===c?' selected':''}>${c}</option>`).join('')}
+            ${allComps.map(comp=>`<option value="${comp}"${item.component===comp?' selected':''}>${comp}</option>`).join('')}
           </select>
         </div>
         <div style="display:flex;flex-direction:column;gap:3px">
           <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Tool Code</label>
-          <select onchange="updateOutItem('${item.id}','toolCode',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
+          <select onchange="onOutToolChange('${item.id}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
             <option value="">— Select —</option>
             ${tools.map(t=>`<option value="${t.code}"${item.toolCode===t.code?' selected':''}>${t.code} — ${t.name}</option>`).join('')}
           </select>
         </div>
       </div>
+      ${isRecon?`
+      <div style="margin-bottom:7px">
+        <label style="font-size:9px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">🔖 Unique Tool IDs — Select tools being sent</label>
+        ${item.selectedIDs?.length>0?`
+        <div style="padding:7px 10px;background:rgba(245,158,11,.08);border:1.5px solid rgba(245,158,11,.4);border-radius:6px;margin-bottom:5px;display:flex;flex-wrap:wrap;gap:4px">
+          ${item.selectedIDs.map(id=>`<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:2px 7px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:4px;color:var(--amber)">${id}</span>`).join('')}
+        </div>`:''}
+        <button onclick="showMultiIDSelect('${item.id}','${item.toolCode}','${site}')"
+          style="width:100%;padding:9px;background:rgba(245,158,11,.1);border:1.5px dashed rgba(245,158,11,.4);border-radius:6px;color:var(--amber);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;cursor:pointer">
+          ${item.selectedIDs?.length>0?`✏️ Change Selection (${item.selectedIDs.length} selected)`:'🔖 Select Tool IDs from List'}
+        </button>
+      </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
         <div style="display:flex;flex-direction:column;gap:3px">
           <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Qty</label>
@@ -3658,9 +4578,9 @@ function renderOutItems(){
           <label style="font-size:9px;font-weight:600;color:var(--fog);text-transform:uppercase;letter-spacing:.5px">Condition</label>
           <select onchange="updateOutItem('${item.id}','condition',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:7px 9px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none">
             <option value="">—</option>
-            <option value="recon">For Reconditioning</option>
-            <option value="worn">Worn — Scrap</option>
-            <option value="broken">Broken — Scrap</option>
+            <option value="recon">♻️ For Reconditioning</option>
+            <option value="worn">🗑️ Worn — Scrap</option>
+            <option value="broken">💥 Broken — Scrap</option>
           </select>
         </div>
       </div>
@@ -3668,9 +4588,29 @@ function renderOutItems(){
   }).join('');
 }
 
-function onOutCompChange(id,comp){const item=outItems.find(i=>i.id===id);if(item){item.component=comp;item.toolCode='';}renderOutItems();}
-function updateOutItem(id,field,val){const item=outItems.find(i=>i.id===id);if(item)item[field]=field==='qty'?(parseFloat(val)||0):val;}
-function removeOutItem(id){if(outItems.length===1){showToast('At least one item required','err');return;}outItems=outItems.filter(i=>i.id!==id);renderOutItems();}
+function onOutCompChange(id,comp){
+  const item=outItems.find(i=>i.id===id);
+  if(item){item.component=comp;item.toolCode='';item.uniqueID='';}
+  renderOutItems();
+}
+function onOutToolChange(id,code){
+  const item=outItems.find(i=>i.id===id);
+  if(item){item.toolCode=code;item.uniqueID='';}
+  renderOutItems();
+}
+function onOutIDChange(id,uniqueID){
+  const item=outItems.find(i=>i.id===id);
+  if(item){item.uniqueID=uniqueID;}
+  renderOutItems();
+}
+function updateOutItem(id,field,val){
+  const item=outItems.find(i=>i.id===id);
+  if(item) item[field]=field==='qty'?(parseFloat(val)||0):val;
+}
+function removeOutItem(id){
+  if(outItems.length===1){showToast('At least one item required','err');return;}
+  outItems=outItems.filter(i=>i.id!==id);renderOutItems();
+}
 
 function submitOutward(){
   const dcNo  = document.getElementById('out-dc-no').value.trim();
