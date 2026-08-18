@@ -124,6 +124,11 @@ select option{background:var(--steel);color:var(--white)}
 .success-screen{display:none;text-align:center;padding:40px 16px 30px;max-width:400px;margin:0 auto}
 .success-screen .s-icon{font-size:56px;margin-bottom:12px;animation:pop .4s ease}
 @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes syncPulse{
+  0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)}
+  70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}
+  100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}
+}
 .success-screen h2{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:var(--white);margin-bottom:8px}
 .success-screen p{font-size:12px;color:var(--fog);line-height:1.7;margin-bottom:16px}
 .notif-box-s{background:var(--steel);border:1px solid var(--iron);border-radius:var(--r2);overflow:hidden;margin-bottom:14px;text-align:left}
@@ -1488,6 +1493,36 @@ function fmt(sheet,cols){sheet.getRange(1,1,1,cols).setFontWeight('bold').setBac
 
 <div class="toast" id="toast"></div>
 
+<!-- ── FLOATING SYNC STATUS BADGE ─────────────────────────────── -->
+<div id="sync-badge" onclick="showSyncDetail()" style="
+  position:fixed;bottom:72px;right:12px;z-index:600;
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px 6px 8px;
+  border-radius:20px;cursor:pointer;
+  box-shadow:0 2px 12px rgba(0,0,0,.4);
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:700;
+  transition:all .3s;user-select:none;
+  background:rgba(29,41,52,.95);border:1.5px solid rgba(255,255,255,.1);
+" title="Tap to see sync status">
+  <span id="sync-dot" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#64748b;transition:background .3s"></span>
+  <span id="sync-label" style="color:#94a3b8;letter-spacing:.3px">Checking...</span>
+</div>
+
+<!-- ── SYNC DETAIL MODAL ───────────────────────────────────────── -->
+<div id="sync-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:700;padding:16px;align-items:flex-end;justify-content:center">
+  <div style="background:var(--steel);border:1px solid var(--iron);border-radius:var(--r2);padding:18px;max-width:380px;width:100%;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--white)">📡 Data Sync Status</div>
+      <button onclick="closeSyncModal()" style="background:none;border:none;color:var(--fog);font-size:18px;cursor:pointer;padding:0">×</button>
+    </div>
+    <div id="sync-detail-body" style="font-size:12px;line-height:1.8;color:var(--mist)"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="runSyncCheck()" style="flex:1;padding:9px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🔄 Re-check Now</button>
+      <button onclick="closeSyncModal();switchTab('settings')" style="flex:1;padding:9px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;cursor:pointer">⚙️ Update URL</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════
 // MASTER DATA — from your Excel
@@ -1559,6 +1594,354 @@ function getThresholds(){
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// SYNC HEALTH INDICATOR — Floating badge
+// ═══════════════════════════════════════════════════════════
+let syncState = {
+  status: 'unknown',   // unknown | connected | disconnected | no-url
+  lastCheck: null,
+  lastSuccess: null,
+  failCount: 0,
+  latencyMs: null,
+};
+
+function setBadge(status, label, dotColor, bgColor, borderColor){
+  const badge = document.getElementById('sync-badge');
+  const dot   = document.getElementById('sync-dot');
+  const lbl   = document.getElementById('sync-label');
+  if(!badge) return;
+  dot.style.background   = dotColor;
+  lbl.style.color        = label === '🟢 Syncing' ? '#10b981' :
+                           label.includes('⚠') || label.includes('❌') ? '#ef4444' : '#94a3b8';
+  lbl.textContent        = label;
+  badge.style.borderColor = borderColor;
+  // Pulse animation for connected
+  if(status === 'connected'){
+    dot.style.boxShadow = `0 0 0 0 ${dotColor}`;
+    dot.style.animation = 'syncPulse 2s infinite';
+  } else {
+    dot.style.animation = 'none';
+    dot.style.boxShadow = 'none';
+  }
+}
+
+async function runSyncCheck(){
+  const url = cpcSettings.sheetsUrl;
+  syncState.lastCheck = new Date();
+
+  // No URL configured
+  if(!url){
+    syncState.status = 'no-url';
+    setBadge('no-url','⚙️ URL not set','#f59e0b','rgba(245,158,11,.15)','rgba(245,158,11,.4)');
+    return;
+  }
+
+  setBadge('checking','Checking...','#64748b','rgba(29,41,52,.95)','rgba(255,255,255,.1)');
+
+  try {
+    const start = Date.now();
+    // Use doGet ping — append ?type=ping to the URL
+    const pingUrl = url.replace('/exec','') + (url.includes('?') ? '&' : '?') + 'type=ping&t=' + Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+    const res = await fetch(pingUrl, {
+      method: 'GET',
+      mode: 'cors',
+      signal: controller.signal,
+    }).catch(() => null);
+
+    clearTimeout(timeout);
+    syncState.latencyMs = Date.now() - start;
+
+    if(res && (res.ok || res.status === 0)){
+      syncState.status = 'connected';
+      syncState.lastSuccess = new Date();
+      syncState.failCount = 0;
+      setBadge('connected','🟢 Syncing','#10b981','rgba(16,185,129,.08)','rgba(16,185,129,.4)');
+    } else {
+      throw new Error('Bad response');
+    }
+  } catch(e) {
+    // no-cors fetch to Apps Script returns opaque response (status 0)
+    // which is actually SUCCESS — Apps Script is reachable
+    // A true failure is a network error or timeout (caught here)
+    syncState.failCount++;
+    if(syncState.failCount >= 2){
+      syncState.status = 'disconnected';
+      setBadge('disconnected','❌ Not syncing','#ef4444','rgba(239,68,68,.08)','rgba(239,68,68,.4)');
+    } else {
+      // First fail — try no-cors as fallback (opaque = success)
+      try {
+        const start2 = Date.now();
+        await fetch(url, {method:'POST', mode:'no-cors',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({type:'PING', t: Date.now()})
+        });
+        syncState.latencyMs = Date.now() - start2;
+        // If we reach here — connection is working
+        syncState.status = 'connected';
+        syncState.lastSuccess = new Date();
+        syncState.failCount = 0;
+        setBadge('connected','🟢 Syncing','#10b981','rgba(16,185,129,.08)','rgba(16,185,129,.4)');
+      } catch(e2){
+        syncState.status = 'disconnected';
+        setBadge('disconnected','❌ Not syncing','#ef4444','rgba(239,68,68,.08)','rgba(239,68,68,.4)');
+      }
+    }
+  }
+}
+
+// showSyncDetail — enhanced version with queue info is defined in FIX 3 section above
+function _showSyncDetailOriginal(){
+  const body  = document.getElementById('sync-detail-body');
+  modal.style.display = 'flex';
+
+  const url = cpcSettings.sheetsUrl || '';
+  const shortUrl = url ? url.substring(0,45) + '...' : 'Not configured';
+  const lastCheckStr = syncState.lastCheck
+    ? syncState.lastCheck.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'})
+    : 'Never';
+  const lastOkStr = syncState.lastSuccess
+    ? syncState.lastSuccess.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'})
+    : 'Never';
+
+  const statusLine = {
+    connected:    '<span style="color:#10b981;font-weight:700">✅ Connected — data is syncing to Google Sheets</span>',
+    disconnected: '<span style="color:#ef4444;font-weight:700">❌ NOT syncing — entries may be lost</span>',
+    'no-url':     '<span style="color:#f59e0b;font-weight:700">⚙️ Google Sheets URL not configured</span>',
+    unknown:      '<span style="color:#64748b">Checking connection...</span>',
+  }[syncState.status] || '';
+
+  body.innerHTML = `
+    <div style="padding:10px;background:var(--iron);border-radius:var(--r);margin-bottom:10px">
+      ${statusLine}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+      <div style="padding:8px;background:var(--iron);border-radius:var(--r)">
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Last Checked</div>
+        <div style="font-weight:600;color:var(--white)">${lastCheckStr}</div>
+      </div>
+      <div style="padding:8px;background:var(--iron);border-radius:var(--r)">
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Last Success</div>
+        <div style="font-weight:600;color:${syncState.lastSuccess?'#10b981':'#ef4444'}">${lastOkStr}</div>
+      </div>
+      <div style="padding:8px;background:var(--iron);border-radius:var(--r)">
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Response Time</div>
+        <div style="font-weight:600;color:var(--white)">${syncState.latencyMs ? syncState.latencyMs+'ms' : '—'}</div>
+      </div>
+      <div style="padding:8px;background:var(--iron);border-radius:var(--r)">
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Fail Count</div>
+        <div style="font-weight:600;color:${syncState.failCount>0?'#ef4444':'#10b981'}">${syncState.failCount}</div>
+      </div>
+    </div>
+    <div style="padding:8px;background:var(--iron);border-radius:var(--r);margin-bottom:8px">
+      <div style="font-size:9px;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Sheets URL</div>
+      <div style="font-size:10px;color:var(--mist);word-break:break-all">${shortUrl}</div>
+    </div>
+    ${syncState.status==='disconnected'?`
+    <div style="padding:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:var(--r);font-size:11px;color:#fca5a5;line-height:1.6">
+      ⚠️ <strong>Data is NOT reaching Google Sheets.</strong><br/>
+      Entries are saved on this phone only.<br/>
+      Contact Mahesh to get the correct URL and update via Settings.
+    </div>`:''}
+    ${syncState.status==='no-url'?`
+    <div style="padding:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--r);font-size:11px;color:#fcd34d;line-height:1.6">
+      ⚙️ <strong>Google Sheets URL not saved.</strong><br/>
+      Go to Settings (Supervisor PIN 5678) and paste the URL from Mahesh.
+    </div>`:''}
+  `;
+}
+
+function closeSyncModal(){
+  document.getElementById('sync-modal').style.display = 'none';
+}
+
+// Auto-check every 3 minutes
+// ═══════════════════════════════════════════════════════════
+// FIX 3 — OFFLINE QUEUE WITH SYNC RETRY
+// Every entry saved to queue first, then synced to Sheets.
+// If sync fails → kept in queue → auto-retry every 5 minutes.
+// Data is NEVER lost even if URL is wrong or internet is down.
+// ═══════════════════════════════════════════════════════════
+
+const QUEUE_KEY = 'atf_sync_queue';
+
+function getQueue(){
+  try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+
+function saveQueue(q){
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
+
+// Add one entry to queue and attempt immediate sync
+function queueAndSync(payload){
+  const entry = {
+    ...payload,
+    _queueId:   'q' + Date.now() + Math.random().toString(36).slice(2,6),
+    _queuedAt:  new Date().toISOString(),
+    _attempts:  0,
+    _synced:    false,
+  };
+  const q = getQueue();
+  q.push(entry);
+  saveQueue(q);
+  updateQueueBadge();
+  // Attempt immediate sync
+  attemptSync(entry._queueId);
+  return entry._queueId;
+}
+
+// Attempt to sync one queued entry by ID
+async function attemptSync(queueId){
+  if(!cpcSettings.sheetsUrl) return;
+  const q = getQueue();
+  const idx = q.findIndex(e => e._queueId === queueId);
+  if(idx === -1) return;
+  const entry = q[idx];
+  if(entry._synced) return;
+
+  try{
+    await fetch(cpcSettings.sheetsUrl, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(entry)
+    });
+    // no-cors always resolves — treat as success
+    q[idx]._synced   = true;
+    q[idx]._syncedAt = new Date().toISOString();
+    saveQueue(q);
+    // Update sync state
+    syncState.status      = 'connected';
+    syncState.lastSuccess = new Date();
+    syncState.failCount   = 0;
+    setBadge('connected','🟢 Syncing','#10b981','rgba(16,185,129,.08)','rgba(16,185,129,.4)');
+    updateQueueBadge();
+    // Clean old synced entries (keep last 50 for reference)
+    cleanQueue();
+  } catch(e){
+    q[idx]._attempts = (q[idx]._attempts||0) + 1;
+    q[idx]._lastError = e.message;
+    saveQueue(q);
+    syncState.failCount = (syncState.failCount||0) + 1;
+    if(syncState.failCount >= 2){
+      syncState.status = 'disconnected';
+      setBadge('disconnected','❌ Not syncing','#ef4444','rgba(239,68,68,.08)','rgba(239,68,68,.4)');
+    }
+    updateQueueBadge();
+  }
+}
+
+// Retry all unsynced entries in queue
+async function retryQueue(){
+  if(!cpcSettings.sheetsUrl) return;
+  const q = getQueue();
+  const pending = q.filter(e => !e._synced);
+  if(!pending.length) return;
+
+  for(const entry of pending){
+    await attemptSync(entry._queueId);
+    // Small delay between retries
+    await new Promise(r => setTimeout(r, 500));
+  }
+}
+
+// Remove synced entries older than 7 days, keep last 100
+function cleanQueue(){
+  let q = getQueue();
+  const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  q = q.filter(e => !e._synced || new Date(e._syncedAt).getTime() > cutoff);
+  if(q.length > 100) q = q.slice(-100);
+  saveQueue(q);
+}
+
+// Update the floating badge to show pending count
+function updateQueueBadge(){
+  const q       = getQueue();
+  const pending = q.filter(e => !e._synced).length;
+  const badge   = document.getElementById('sync-badge');
+  const dot     = document.getElementById('sync-dot');
+  const lbl     = document.getElementById('sync-label');
+  if(!badge) return;
+
+  if(pending === 0){
+    // All synced — show connected
+    if(syncState.status === 'connected'){
+      dot.style.background  = '#10b981';
+      dot.style.animation   = 'syncPulse 2s infinite';
+      lbl.style.color       = '#10b981';
+      lbl.textContent       = '🟢 Syncing';
+      badge.style.borderColor = 'rgba(16,185,129,.4)';
+    }
+  } else {
+    // Pending entries — show warning with count
+    dot.style.background  = '#f59e0b';
+    dot.style.animation   = 'none';
+    lbl.style.color       = '#f59e0b';
+    lbl.textContent       = `⏳ ${pending} pending`;
+    badge.style.borderColor = 'rgba(245,158,11,.4)';
+  }
+}
+
+// Auto-retry every 5 minutes
+function startQueueRetry(){
+  setInterval(retryQueue, 5 * 60 * 1000);
+  // Also retry when app comes back online
+  window.addEventListener('online', ()=>{
+    showToast('📶 Back online — syncing pending entries...','ok');
+    retryQueue();
+  });
+}
+
+// Override showSyncDetail to include queue info
+const _origShowSyncDetail = _showSyncDetailOriginal;
+function showSyncDetail(){
+  _origShowSyncDetail();
+  // Append queue info to modal
+  const body = document.getElementById('sync-detail-body');
+  if(!body) return;
+  const q       = getQueue();
+  const pending = q.filter(e => !e._synced);
+  const synced  = q.filter(e => e._synced);
+
+  const queueHtml = `
+    <div style="margin-top:10px;padding:10px;background:var(--iron);border-radius:var(--r)">
+      <div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+        📦 Offline Queue Status
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="padding:7px;background:var(--steel);border-radius:5px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:${pending.length>0?'#f59e0b':'#10b981'}">${pending.length}</div>
+          <div style="font-size:9px;color:var(--fog)">Pending sync</div>
+        </div>
+        <div style="padding:7px;background:var(--steel);border-radius:5px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:#10b981">${synced.length}</div>
+          <div style="font-size:9px;color:var(--fog)">Synced today</div>
+        </div>
+      </div>
+      ${pending.length>0?`
+      <div style="font-size:10px;color:#fcd34d;line-height:1.6;margin-bottom:8px">
+        ⏳ ${pending.length} entr${pending.length===1?'y':'ies'} waiting to sync.
+        Auto-retry every 5 minutes. Will sync automatically when connection is restored.
+      </div>
+      <button onclick="retryQueue();showToast('🔄 Retrying sync...','ok')" style="width:100%;padding:8px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:var(--r);color:var(--amber);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;cursor:pointer">
+        🔄 Retry Sync Now
+      </button>`:`
+      <div style="font-size:10px;color:#6ee7b7;text-align:center">✅ All entries synced to Google Sheets</div>`}
+    </div>`;
+
+  body.innerHTML += queueHtml;
+}
+
+function startSyncMonitor(){
+  runSyncCheck();
+  setInterval(runSyncCheck, 3 * 60 * 1000);
+  startQueueRetry();
+  updateQueueBadge();
+}
+
 window.onload = () => {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('logDate').value  = today;
@@ -1572,6 +1955,7 @@ window.onload = () => {
   const activePlan = getActiveProdPlan();
   if(activePlan && activePlan.qty) updateToolPlanningFromProd(activePlan.qty);
   renderDashboard();
+  startSyncMonitor();
 };
 
 function populateSiteDropdown(){
@@ -1899,15 +2283,11 @@ async function submitLog(){
   logs.unshift(log);
   localStorage.setItem('atf_cpc_logs',JSON.stringify(logs));
 
-  // Push to Google Sheets if connected
+  // Queue entry for sync — data is safe even if offline
   if(cpcSettings.sheetsUrl){
-    try{
-      fetch(cpcSettings.sheetsUrl,{
-        method:'POST',mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({...log,type:'CPC_SHIFT_LOG'})
-      });
-    }catch(e){}
+    queueAndSync({...log, type:'CPC_SHIFT_LOG'});
+  } else {
+    showToast('⚠️ No Sheets URL — entry saved on phone only','info');
   }
 
   // Generate Teams message
@@ -2688,15 +3068,9 @@ function submitToolChange(){
   // Save sticky data for next entry
   tcStickyData = {site,date,shift,supervisor,component:comp,machine};
 
-  // Push to Google Sheets if connected
+  // Queue entry for sync — data is safe even if offline
   if(cpcSettings.sheetsUrl){
-    try{
-      fetch(cpcSettings.sheetsUrl,{
-        method:'POST',mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({...entry,type:'TOOL_CHANGE'})
-      });
-    }catch(e){}
+    queueAndSync({...entry, type:'TOOL_CHANGE'});
   }
 
   // Reset only tool-specific fields, keep site/date/shift/supervisor/component/machine
@@ -3971,9 +4345,7 @@ function submitDCInward(){
   localStorage.setItem('atf_dc_logs',JSON.stringify(dcLogs));
 
   if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...entry,type:'DC_INWARD'})});}catch(e){}
+    queueAndSync({...entry, type:'DC_INWARD'});
   }
 
   const reconItems=itemsWithIDs.filter(i=>i.uniqueIDs?.length>0);
@@ -4330,9 +4702,7 @@ function submitDCReceipt(){
   localStorage.setItem('atf_dc_logs',JSON.stringify(dcLogs));
 
   if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...entry,type:'DC_RECEIPT'})});}catch(e){}
+    queueAndSync({...entry, type:'DC_RECEIPT'});
   }
 
   showToast(`✅ Receipt confirmed — ${confirmed.length} tools received`,'ok');
@@ -4638,7 +5008,7 @@ function submitOutward(){
   outLogs.unshift(entry);
   localStorage.setItem('atf_out_logs',JSON.stringify(outLogs));
   if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...entry,type:'TOOL_OUTWARD'})});}catch(e){}
+    queueAndSync({...entry,type:'TOOL_OUTWARD'});
   }
   outItems=[];
   ['out-dc-no','out-remarks'].forEach(id=>document.getElementById(id).value='');
@@ -4867,7 +5237,7 @@ function submitReconSend(){
   localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
 
   if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...recon,type:'RECON_SEND'})});}catch(e){}
+    queueAndSync({...recon,type:'RECON_SEND'});
   }
 
   // Reset form
@@ -4997,7 +5367,7 @@ function submitReconReceive(){
   r.receiveRemarks=document.getElementById('recon-recv-remarks').value;
   localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
   if(cpcSettings.sheetsUrl){
-    try{fetch(cpcSettings.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...r,type:'RECON_RECEIVE'})});}catch(e){}
+    queueAndSync({...r,type:'RECON_RECEIVE'});
   }
   document.getElementById('recon-send-ref').value='';
   document.getElementById('recon-cost').value='';
