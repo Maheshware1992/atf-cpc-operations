@@ -2230,6 +2230,7 @@ function getDefaultToolCodes(){
       {code:'CU04IN000051',name:'TDC 2 TT8020',operation:'Turning',make:'Tegutec',stdLife:5000},
       {code:'CU01SC000257',name:'Ø2x5.0 HSS Pilot Center Drill',operation:'Drilling',make:'Smith International',stdLife:7500},
       {code:'CU01SC000258',name:'SC Chamfer Tool D3.6',operation:'Chamfering',make:'Om Tools',stdLife:31125},
+      {code:'CU01SC000258.1',name:'SC DRILL D2.8XFL10XOAL40XSH4',operation:'Drilling',make:'Om Tools',stdLife:16667},
       {code:'RE01SC000258',name:'SC Drill Ø2.8xFL10xOAL40xSH4',operation:'Drilling',make:'Om Tools',stdLife:16667},
       {code:'CU01SC000259',name:'SC Reamer Ø3.0xFL10xOAL40xSH4',operation:'Reaming',make:'Om Tools',stdLife:15000},
       {code:'RE01SC000259',name:'RE SC Reamer Ø3.0xFL10xOAL40xSH4',operation:'Reaming',make:'Om Tools',stdLife:15000},
@@ -3276,7 +3277,7 @@ const COATING_REQUIRED = {
   'CU04IN000004':true,'CU01SC000017':true,'CU01SC000018':true,
   // A897 Shaft — ALL tools
   'CU16AF01118S':true,'CU04IN000050':true,'CU04IN000051':true,
-  'CU01SC000257':true,'CU01SC000258':true,'RE01SC000258':true,
+  'CU01SC000257':true,'CU01SC000258':true,'CU01SC000258.1':true,'RE01SC000258':true,
   'CU01SC000259':true,'RE01SC000259':true,
   // A944 — NO tools need coating (removed RE01AC30802F per Mahesh)
   // B493 — ALL tools
@@ -3307,6 +3308,7 @@ const TOOL_SHORT_NAME = {
   // ── A897 Shaft ───────────────────────────────────────────────
   'CU01SC000257': 'A897S-D2x5',      // Center Drill Ø2x5
   'CU01SC000258': 'A897S-D3.6CHF',   // Chamfer Tool D3.6
+  'CU01SC000258.1': 'A897S-D2.8',    // SC Drill D2.8xFL10xOAL40xSH4
   'CU01SC000259': 'A897S-D3RMR',     // Reamer Ø3.0
   'CU16AF01118S': 'A897S-DCGT',      // DCGT Insert (dual-op)
   // ── B128 ─────────────────────────────────────────────────────
@@ -3371,6 +3373,7 @@ const TOOL_SHORT_NAME = {
 const RECON_PRICE_MASTER = {
   'CU01SC000257':[167,  0,   0,   0  ],
   'CU01SC000258':[1900, 0,   0,   0  ],
+  'CU01SC000258.1':[0,  0,   0,   0  ],
   'CU01SC000259':[1900, 0,   0,   0  ],
   'CU03AB36702B':[10500,8000,8000,8000],
   'CU01AC29902F':[3006, 404, 404, 404],
@@ -3694,7 +3697,7 @@ function getToolPrice(code){
   // DEFAULT PRICES — from SAP master sheet (58 tools pending — add via Settings)
   const defaults = {
     'CU16AF01118S':584,'CU04IN000050':693,'CU04IN000051':530,
-    'CU01SC000257':167,'CU01SC000258':1900,'RE01SC000258':200,
+    'CU01SC000257':167,'CU01SC000258':1900,'CU01SC000258.1':0,'RE01SC000258':200,
     'CU01SC000259':1900,'RE01SC000259':200,
     'CU01AC29902F':3006,'RE01AC29902F':404,
     'CU02AA01001D':556,
