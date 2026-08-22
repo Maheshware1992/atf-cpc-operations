@@ -5843,9 +5843,15 @@ function renderInventory(){
   }
 
   // Sort: critical first, then low, then ok
+  // Fixed sort: Component order first → then SAP code alphabetically within component
+  const COMP_ORDER = ['A506 Body','A506 Cover','A897 Body','A897 Shaft','A944','B128','B487','B493'];
   allTools.sort((a,b)=>{
-    const order={critical:0,low:1,overstock:2,ok:3};
-    return (order[a.stock.status]||3)-(order[b.stock.status]||3);
+    const ci = COMP_ORDER.indexOf(a.comp);
+    const cj = COMP_ORDER.indexOf(b.comp);
+    // Components in defined order; unknown components go to end
+    if(ci !== cj) return (ci===-1?999:ci) - (cj===-1?999:cj);
+    // Within same component — SAP code alphabetically
+    return a.code.localeCompare(b.code);
   });
 
   const html=`<table style="width:100%;border-collapse:collapse;font-size:11px">
