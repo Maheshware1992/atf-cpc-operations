@@ -5737,9 +5737,9 @@ function calcStock(code){
   const avail=office+site1+site2; // available (not at vendor)
 
   let status='ok';
-  if(minStock>0 && avail===0)        status='critical';
-  else if(minStock>0 && avail<=minStock) status='low';
-  else if(maxStock>0 && avail>maxStock)  status='overstock';
+  if(avail===0)                              status='critical'; // ZERO stock → always critical
+  else if(minStock>0 && avail<=minStock)     status='low';      // below min → low
+  else if(maxStock>0 && avail>maxStock)      status='overstock';// above max → overstock
 
   return {office,site1,site2,vendor,total,avail,
           min:minStock,max:maxStock,
