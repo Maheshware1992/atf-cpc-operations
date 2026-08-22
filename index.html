@@ -602,6 +602,15 @@ select option{background:var(--steel);color:var(--white)}
     </div>
   </div>
 
+  <!-- Search bar -->
+  <div style="margin-bottom:8px;position:relative">
+    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>
+    <input id="inv-search" type="text" placeholder="Search by SAP code or tool name..."
+      oninput="renderInventory()"
+      style="width:100%;background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:9px 10px 9px 32px;font-family:'Inter',sans-serif;font-size:13px;color:var(--white);box-sizing:border-box;-webkit-appearance:none"
+    />
+  </div>
+
   <!-- Controls -->
   <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
     <select id="inv-comp-filter" onchange="renderInventory()" style="flex:1;background:var(--iron);border:1.5px solid var(--slate);border-radius:var(--r);padding:8px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--white);-webkit-appearance:none;min-width:120px">
@@ -1153,9 +1162,39 @@ function logShift(ss,d){
 }
 function logMachine(ss,d){
   var sh=ss.getSheetByName('CPC_Machine_Detail')||ss.insertSheet('CPC_Machine_Detail');
-  if(sh.getLastRow()===0){sh.appendRow(['Date','Site','Shift','Supervisor','Machine','Component','Production','Rejection','Rejection %','Remarks']);fmt(sh,10);}
+  if(sh.getLastRow()===0){
+    sh.appendRow(['Date','Site','Shift','Supervisor','Machine','Component','Production','Rejection','Rejection %','Status','Remarks','Logged At']);
+    fmt(sh,12);
+  }
   var md=d.machineData||{};
-  Object.keys(md).forEach(function(mc){var m=md[mc];if(!m.production)return;var pct=m.production>0?((m.rejection||0)/m.production*100).toFixed(2):0;sh.appendRow([d.date,d.siteName,d.shift,d.supervisor,mc,m.component||'',m.production,m.rejection||0,pct,m.remarks||'']);});
+  // Fix C: Deduplicate — check if same Date+Site+Shift+Machine already exists, update if so
+  var existing=sh.getLastRow()>1?sh.getDataRange().getValues():[];
+  Object.keys(md).forEach(function(mc){
+    var m=md[mc];
+    var prod=m.production||0;
+    var rej=m.rejection||0;
+    var pct=prod>0?(rej/prod*100).toFixed(2):0;
+    var status=m.status||( prod>0?'filled':'idle');
+    // Check for duplicate row
+    var found=false;
+    for(var i=1;i<existing.length;i++){
+      if(String(existing[i][0])===String(d.date)&&
+         String(existing[i][1])===String(d.siteName)&&
+         String(existing[i][2])===String(d.shift)&&
+         String(existing[i][4])===String(mc)){
+        // Update existing row
+        sh.getRange(i+1,7).setValue(prod);
+        sh.getRange(i+1,8).setValue(rej);
+        sh.getRange(i+1,9).setValue(pct);
+        sh.getRange(i+1,10).setValue(status);
+        sh.getRange(i+1,12).setValue(new Date().toLocaleString('en-IN'));
+        found=true; break;
+      }
+    }
+    if(!found){
+      sh.appendRow([d.date,d.siteName,d.shift,d.supervisor,mc,m.component||'',prod,rej,pct,status,m.remarks||'',new Date().toLocaleString('en-IN')]);
+    }
+  });
 }
 function logToolChange(ss,d){
   var sh=ss.getSheetByName('CPC_Tool_Changes')||ss.insertSheet('CPC_Tool_Changes');
@@ -2239,101 +2278,231 @@ async function submitLog(){
   const site = document.getElementById('site').value;
   const date = document.getElementById('logDate').value;
   const sup  = document.getElementById('supervisor').value;
-  if(!site)  {showToast('Select CPC site','err');return;}
-  if(!date)  {showToast('Select date','err');return;}
-  if(!sup)   {showToast('Select supervisor','err');return;}
+  if(!site)       {showToast('Select CPC site','err');return;}
+  if(!date)       {showToast('Select date','err');return;}
+  if(!sup)        {showToast('Select supervisor','err');return;}
   if(!currentShift){showToast('Select shift','err');return;}
 
   const filledMachines = Object.entries(machineData).filter(([k,v])=>v.production>0);
   if(!filledMachines.length){showToast('Enter production for at least one machine','err');return;}
 
+  // ── FIX A: Build COMPLETE machine list — ALL machines, not just filled ──
+  const allSitesData = getSiteData();
+  const siteConfig   = allSitesData[site];
+  const completeMachineData = {};
+  if(siteConfig){
+    Object.entries(siteConfig.components).forEach(([comp,machines])=>{
+      machines.forEach(mc=>{
+        const key = mc.no||mc;
+        const filled = machineData[key]||{};
+        completeMachineData[key] = {
+          component:  filled.component||comp,
+          production: filled.production||0,
+          rejection:  filled.rejection||0,
+          remarks:    filled.remarks||'',
+          status:     (filled.production||0)>0?'filled':'idle',
+        };
+      });
+    });
+  }
+  Object.entries(machineData).forEach(([k,v])=>{
+    if(!completeMachineData[k]) completeMachineData[k]={...v, status:'filled'};
+  });
+
+  // ── FIX B: Show summary modal — supervisor confirms before submit ──
+  showShiftSummaryModal(site, date, sup, completeMachineData);
+}
+
+// ── SHIFT SUMMARY MODAL ───────────────────────────────────────────────────────
+function showShiftSummaryModal(site, date, sup, completeMachineData){
+  const ex=document.getElementById('shift-summary-modal');
+  if(ex) ex.remove();
+  const allSitesData=getSiteData();
+  const siteName=allSitesData[site]?.name||site;
+  const filled=Object.entries(completeMachineData).filter(([k,v])=>v.production>0);
+  const notFilled=Object.entries(completeMachineData).filter(([k,v])=>!(v.production>0));
+  const totalProd=filled.reduce((s,[k,v])=>s+(v.production||0),0);
+  const totalRej=filled.reduce((s,[k,v])=>s+(v.rejection||0),0);
+  const rejPct=totalProd>0?((totalRej/totalProd)*100).toFixed(1):0;
+
+  const byComp={};
+  filled.forEach(([mc,v])=>{
+    const comp=v.component||'Unknown';
+    if(!byComp[comp]) byComp[comp]={machines:[],prod:0,rej:0};
+    byComp[comp].machines.push({mc,prod:v.production,rej:v.rejection||0});
+    byComp[comp].prod+=v.production||0;
+    byComp[comp].rej+=v.rejection||0;
+  });
+
+  const modal=document.createElement('div');
+  modal.id='shift-summary-modal';
+  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.88);z-index:700;overflow-y:auto;padding:12px';
+
+  let h=`<div style="background:var(--steel);border:2px solid rgba(16,185,129,.3);border-radius:var(--r2);max-width:420px;margin:0 auto;overflow:hidden">
+    <div style="background:rgba(16,185,129,.1);padding:14px 16px;border-bottom:1px solid rgba(16,185,129,.2)">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--green)">📋 Shift Summary — Review Before Submit</div>
+      <div style="font-size:11px;color:var(--fog);margin-top:3px">${siteName} · ${currentShift} Shift · ${date} · ${sup}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--iron)">
+      <div style="background:var(--steel);padding:10px;text-align:center">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--white)">${totalProd.toLocaleString('en-IN')}</div>
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase">Total Pcs</div>
+      </div>
+      <div style="background:var(--steel);padding:10px;text-align:center">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--green)">${filled.length}</div>
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase">Machines Filled</div>
+      </div>
+      <div style="background:var(--steel);padding:10px;text-align:center">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:${parseFloat(rejPct)>=3?'var(--red)':'var(--amber)'}">${totalRej}</div>
+        <div style="font-size:9px;color:var(--fog);text-transform:uppercase">Rejection (${rejPct}%)</div>
+      </div>
+    </div>
+    <div style="padding:12px 14px">
+      <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">✅ Production Entered (${filled.length} machines)</div>`;
+
+  Object.entries(byComp).forEach(([comp,data])=>{
+    h+=`<div style="background:var(--iron);border:1px solid rgba(16,185,129,.15);border-radius:var(--r);padding:9px 11px;margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;font-weight:700;color:var(--amber)">${comp}</span>
+        <span style="font-size:11px;color:var(--green);font-weight:600">${data.prod.toLocaleString('en-IN')} pcs${data.rej>0?' · <span style="color:var(--red)">'+data.rej+' rej</span>':''}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${data.machines.map(m=>'<div style="font-size:10px;padding:3px 8px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:5px;color:var(--mist)">M/C '+m.mc+': <strong>'+m.prod+'</strong>'+(m.rej>0?' <span style="color:var(--red)">('+m.rej+'R)</span>':'')+'</div>').join('')}
+      </div></div>`;
+  });
+
+  if(notFilled.length){
+    h+=`<div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-top:10px;margin-bottom:8px">⚠️ Not Filled — Will Log as 0 pcs (${notFilled.length} machines)</div>
+    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--r);padding:9px 11px;margin-bottom:10px">
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${notFilled.map(([mc,v])=>'<div style="font-size:10px;padding:3px 8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:5px;color:var(--fog)">M/C '+mc+' <span style="font-size:9px">('+( v.component||'—')+')</span></div>').join('')}
+      </div>
+      <div style="font-size:10px;color:var(--fog);margin-top:7px;line-height:1.5">These will be recorded as idle / 0 pcs. Tap <strong style="color:var(--amber)">Go Back &amp; Edit</strong> if any ran production.</div>
+    </div>`;
+  }
+
+  if(toolChanges.length){
+    h+=`<div style="font-size:10px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔧 Tool Changes (${toolChanges.length})</div>
+    <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:var(--r);padding:8px 11px;margin-bottom:10px;font-size:10px;color:var(--fog)">
+      ${toolChanges.map(tc=>tc.toolCode+' — M/C '+tc.machine).join(' · ')}
+    </div>`;
+  }
+
+  h+=`</div>
+    <div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--iron)">
+      <button onclick="document.getElementById('shift-summary-modal').remove()"
+        style="flex:1;padding:12px;background:var(--iron);border:1px solid var(--slate);border-radius:var(--r);color:var(--mist);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer">
+        ← Go Back &amp; Edit
+      </button>
+      <button onclick="confirmAndSubmitLog()"
+        style="flex:2;padding:12px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;cursor:pointer">
+        ✅ Confirm &amp; Submit
+      </button>
+    </div>
+  </div>`;
+  modal.innerHTML=h;
+  document.body.appendChild(modal);
+  window._pendingShiftLog={site,date,sup,completeMachineData};
+}
+
+// ── Confirmed submission ───────────────────────────────────────────────────────
+async function confirmAndSubmitLog(){
+  document.getElementById('shift-summary-modal')?.remove();
+  const {site,date,sup,completeMachineData}=window._pendingShiftLog||{};
+  if(!site){showToast('Something went wrong — try again','err');return;}
+
   document.getElementById('submitBtn').disabled=true;
   document.getElementById('submitBtn').textContent='Saving...';
 
-  const totalProd = filledMachines.reduce((s,[k,v])=>s+(v.production||0),0);
-  const totalRej  = filledMachines.reduce((s,[k,v])=>s+(v.rejection||0),0);
-  const rejPct    = totalProd>0?((totalRej/totalProd)*100).toFixed(2):0;
+  const filled=Object.entries(completeMachineData).filter(([k,v])=>v.production>0);
+  const totalProd=filled.reduce((s,[k,v])=>s+(v.production||0),0);
+  const totalRej=filled.reduce((s,[k,v])=>s+(v.rejection||0),0);
+  const rejPct=totalProd>0?((totalRej/totalProd)*100).toFixed(2):0;
 
-  // Build per-component summary
-  const compSummary = {};
-  filledMachines.forEach(([k,v])=>{
-    const comp = v.component || 'Unknown';
+  const compSummary={};
+  filled.forEach(([k,v])=>{
+    const comp=v.component||'Unknown';
     if(!compSummary[comp]) compSummary[comp]={production:0,rejection:0};
-    compSummary[comp].production += v.production||0;
-    compSummary[comp].rejection  += v.rejection||0;
+    compSummary[comp].production+=v.production||0;
+    compSummary[comp].rejection+=v.rejection||0;
   });
 
-  const highRejMachines = filledMachines.filter(([k,v])=>v.production>0&&((v.rejection/v.production)*100)>=3);
+  const highRejMachines=filled.filter(([k,v])=>v.production>0&&((v.rejection||0)/v.production*100)>=3);
+  const allSites=getSiteData();
 
-  const allSites = getSiteData();
-  const log = {
+  const log={
     id:'log'+Date.now(),
     site, siteName:allSites[site]?.name||site,
     date, shift:currentShift, supervisor:sup,
-    machineData:{...machineData},
+    machineData:completeMachineData,
     toolChanges:[...toolChanges],
     shiftNotes:document.getElementById('shiftNotes').value,
     totalProduction:totalProd,
     totalRejection:totalRej,
     rejectionPct:parseFloat(rejPct),
     compSummary,
+    totalMachines:Object.keys(completeMachineData).length,
+    filledMachines:filled.length,
     loggedAt:new Date().toISOString(),
   };
 
   logs.unshift(log);
   localStorage.setItem('atf_cpc_logs',JSON.stringify(logs));
 
-  // Queue entry for sync — data is safe even if offline
   if(cpcSettings.sheetsUrl){
-    queueAndSync({...log, type:'CPC_SHIFT_LOG'});
+    queueAndSync({...log,type:'CPC_SHIFT_LOG'});
   } else {
-    showToast('⚠️ No Sheets URL — entry saved on phone only','info');
+    showToast('⚠️ No Sheets URL — saved on phone only','info');
   }
 
-  // Generate Teams message
   const shiftColors={A:'🟡',B:'🟣',C:'🔵'};
   const dateLabel=new Date(date).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
-  let msg=`${shiftColors[currentShift]} CPC SHIFT LOG — ${currentShift} SHIFT\n`;
-  msg+=`📅 ${dateLabel} | 👤 ${sup}\n`;
-  msg+=`🏭 ${SITE_DATA[site].name}\n`;
-  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg+=`📊 PRODUCTION SUMMARY\n`;
-  msg+=`Total Production : ${totalProd} pcs\n`;
-  msg+=`Total Rejection  : ${totalRej} pcs (${rejPct}%)\n`;
-  msg+=`Machines Logged  : ${filledMachines.length}\n`;
-  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg+=`🔩 COMPONENT-WISE\n`;
+  let msg=`${shiftColors[currentShift]||'⚪'} CPC SHIFT LOG — ${currentShift} SHIFT
+`;
+  msg+=`📅 ${dateLabel} | 👤 ${sup}
+🏭 ${allSites[site]?.name||site}
+`;
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━
+📊 PRODUCTION SUMMARY
+`;
+  msg+=`Total : ${totalProd.toLocaleString('en-IN')} pcs | Rejection: ${totalRej} (${rejPct}%)
+`;
+  msg+=`Machines: ${filled.length}/${Object.keys(completeMachineData).length} filled
+━━━━━━━━━━━━━━━━━━━━━━━
+`;
   Object.entries(compSummary).forEach(([comp,data])=>{
-    const pct=data.production>0?((data.rejection/data.production)*100).toFixed(1):0;
-    msg+=`${comp}: ${data.production} pcs | Rej: ${data.rejection} (${pct}%)\n`;
+    msg+=`${comp}: ${data.production.toLocaleString('en-IN')} pcs${data.rejection>0?' ('+data.rejection+' rej)':'  ✅'}
+`;
   });
-  if(highRejMachines.length>0){
-    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg+=`⚠️ HIGH REJECTION MACHINES (≥3%)\n`;
-    highRejMachines.forEach(([k,v])=>{
-      const pct=((v.rejection/v.production)*100).toFixed(1);
-      msg+=`M/C ${k} (${v.component}): ${v.rejection}/${v.production} pcs = ${pct}%`;
-      if(v.rejReason) msg+=` | Reason: ${v.rejReason}`;
-      msg+='\n';
-    });
+  if(highRejMachines.length){
+    msg+=`━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ HIGH REJECTION:
+`;
+    highRejMachines.forEach(([mc,v])=>{msg+=`M/C ${mc}: ${v.rejection}/${v.production} (${((v.rejection/v.production)*100).toFixed(1)}%)
+`;});
   }
-  if(toolChanges.length>0){
-    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg+=`🔧 TOOL CHANGES (${toolChanges.length})\n`;
-    toolChanges.forEach((tc,i)=>{
-      msg+=`${i+1}. M/C ${tc.machine} | ${tc.toolName} | Life: ${tc.lifeAchieved||'—'} pcs | ${tc.changeReason}\n`;
-    });
+  if(toolChanges.length){
+    msg+=`━━━━━━━━━━━━━━━━━━━━━━━
+🔧 TOOL CHANGES: ${toolChanges.length}
+`;
+    toolChanges.forEach(tc=>{msg+=`• ${tc.toolCode} — M/C ${tc.machine}
+`;});
   }
-  if(log.shiftNotes){
-    msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg+=`📝 NOTES\n${log.shiftNotes}\n`;
-  }
-  msg+=`━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg+=`Logged at: ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}`;
+  msg+=`━━━━━━━━━━━━━━━━━━━━━━━
+Logged via ATF CPC App`;
 
-  document.getElementById('successMsg').textContent=`${SITE_DATA[site].name} · ${currentShift} Shift · ${dateLabel} · ${totalProd} pcs produced · ${totalRej} rejected`;
+  document.getElementById('successMsg').textContent=`${allSites[site]?.name||site} · ${currentShift} Shift · ${dateLabel} · ${totalProd.toLocaleString('en-IN')} pcs · ${filled.length} machines`;
   document.getElementById('notifMsgS').textContent=msg;
   window._currentShiftMsg=msg;
+  window._pendingShiftLog=null;
+
+  try{await navigator.clipboard.writeText(msg);}catch(e){}
+
+  machineData={};toolChanges=[];tcCount=0;currentShift='';
+  ['A','B','C'].forEach(s=>{const el=document.getElementById('shift-'+s);if(el)el.classList.remove('active');});
+  document.getElementById('shiftNotes').value='';
+  document.getElementById('submitBtn').disabled=false;
+  document.getElementById('submitBtn').textContent='⚡ SUBMIT SHIFT LOG';
   document.getElementById('formView').style.display='none';
   document.getElementById('successView').style.display='block';
   renderDashboard();
@@ -2727,8 +2896,7 @@ function getDefaultToolCodes(){
       {code:'CU09AA02214A',name:'ABRASIVE BRISTLE CUP BRUSH 60X25X25MM',operation:'Deburring',make:'Deburring India',stdLife:100000},
       {code:'CU02AA01001D',name:'TAP M6 X 1 6H TICN COATED',operation:'Tapping',make:'Emkey Taps',stdLife:50000},
       {code:'CU04IN000025',name:'CPGW09T302 PKD Z2 SKL3.5',operation:'Turning',make:'Shabbar',stdLife:18182},
-      {code:'CU16BB02147S',name:'INSERT PCD TNGA160404 JPD200',operation:'Turning',make:'Shabbar',stdLife:5000},
-      {code:'CI04IN000026',name:'SNEW PCD Insert',operation:'Turning',make:'Shabbar',stdLife:5000},
+      {code:'CU014IN000026',name:'SNEW PCD Insert',operation:'Turning',make:'Shabbar',stdLife:5000},
     ],
     'B493':[
       {code:'CU01SC000267',name:'D22 SC Endmill',operation:'Milling',make:'Global Tools',stdLife:2000},
@@ -4002,7 +4170,6 @@ const TOOL_PLANNING = {
   'CU01AG06302F':{comp:'A897 Body',name:'SC STEP DRILL D5',life:5000,prod:15000,monthlyCons:3.0,rotation:4.0,effNeed:0.8,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:2309.0,avgReconCost:150.0,monthlyTotal:2309.0,monthlySaving:4618.0},
   'CU03AB22402B':{comp:'A897 Body',name:'PCD STEP REAMER D6',life:73950,prod:15000,monthlyCons:0.2,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:15000.0,avgReconCost:1875.0,monthlyTotal:15000.0,monthlySaving:0.0},
   'CU03AB22602B':{comp:'A897 Body',name:'PCD REAMER D8 COVER',life:100000,prod:15000,monthlyCons:0.1,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:11850.0,avgReconCost:2250.0,monthlyTotal:11850.0,monthlySaving:0.0},
-  'CU16BB02147S':{comp:'A944',name:'INSERT PCD TNGA160404',life:5000,prod:70000,monthlyCons:14.0,rotation:1.0,effNeed:14.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:13,maxStock:27,newOrderPm:14,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
   'CU16BB02157S':{comp:'A897 Body',name:'INS PCD CCMW09T302',life:5000,prod:15000,monthlyCons:3.0,rotation:1.0,effNeed:3.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:3,maxStock:6,newOrderPm:3,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
   'CU03AB22702B':{comp:'A897 Body',name:'PCD REAMER D21 2F',life:100000,prod:15000,monthlyCons:0.1,rotation:2.0,effNeed:0.1,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:20000.0,avgReconCost:3125.0,monthlyTotal:20000.0,monthlySaving:0.0},
   'CU01AC28702F':{comp:'A944',name:'STEP DRILL Ø5xØ15',life:45000,prod:70000,monthlyCons:1.6,rotation:4.0,effNeed:0.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:6609.0,avgReconCost:310.0,monthlyTotal:6609.0,monthlySaving:6609.0},
@@ -4011,7 +4178,7 @@ const TOOL_PLANNING = {
   'CU03AB39702B':{comp:'A944',name:'PCD REAMER D12.032',life:38638,prod:70000,monthlyCons:1.8,rotation:2.0,effNeed:0.9,leadWks:4.0,maxRecon:4,reconDays:14.0,minStock:2,maxStock:3,newOrderPm:1,reconQtyPm:0,newPrice:31000.0,avgReconCost:5750.0,monthlyTotal:31000.0,monthlySaving:31000.0},
   'CU09AA02214A':{comp:'A944',name:'ABRASIVE BRISTLE BRUSH 60mm',life:100000,prod:70000,monthlyCons:0.7,rotation:1.0,effNeed:0.7,leadWks:1.0,maxRecon:0,reconDays:0,minStock:1,maxStock:2,newOrderPm:1,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
   'CU04IN000025':{comp:'A944',name:'CPGW09T302 PCD Insert',life:18182,prod:70000,monthlyCons:3.8,rotation:1.0,effNeed:3.8,leadWks:3.0,maxRecon:0,reconDays:0,minStock:4,maxStock:8,newOrderPm:4,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
-  'CI04IN000026':{comp:'A944',name:'SNEW PCD Insert',life:5000,prod:70000,monthlyCons:14.0,rotation:1.0,effNeed:14.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:13,maxStock:27,newOrderPm:14,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
+  'CU014IN000026':{comp:'A944',name:'SNEW PCD Insert',life:5000,prod:70000,monthlyCons:14.0,rotation:1.0,effNeed:14.0,leadWks:3.0,maxRecon:0,reconDays:0,minStock:13,maxStock:27,newOrderPm:14,reconQtyPm:0,newPrice:0,avgReconCost:0,monthlyTotal:0,monthlySaving:0},
   'CU01SC000267':{comp:'B493',name:'D22 SC Endmill',life:2000,prod:75000,monthlyCons:37.5,rotation:4.0,effNeed:9.4,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:6,maxStock:16,newOrderPm:3,reconQtyPm:7,newPrice:17000.0,avgReconCost:263.0,monthlyTotal:52843.0,monthlySaving:593157.0},
   'CU01SC000237':{comp:'B493',name:'D16 SC Endmill',life:1000,prod:75000,monthlyCons:75.0,rotation:4.0,effNeed:18.8,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:12,maxStock:31,newOrderPm:5,reconQtyPm:14,newPrice:9200.0,avgReconCost:175.0,monthlyTotal:48450.0,monthlySaving:641550.0},
   'CU01SC000236':{comp:'B493',name:'D10X0.4 SC Endmill',life:400,prod:75000,monthlyCons:187.5,rotation:4.0,effNeed:46.9,leadWks:2.0,maxRecon:3,reconDays:7.0,minStock:29,maxStock:76,newOrderPm:12,reconQtyPm:35,newPrice:4000.0,avgReconCost:103.0,monthlyTotal:51593.0,monthlySaving:700407.0},
@@ -5575,6 +5742,8 @@ function renderInventory(){
   const compFilter  = document.getElementById('inv-comp-filter')?.value||'';
   const siteFilter  = document.getElementById('inv-site-filter')?.value||'';
   const statusFilter= document.getElementById('inv-status-filter')?.value||'';
+  const searchRaw   = document.getElementById('inv-search')?.value||'';
+  const search      = searchRaw.trim().toLowerCase();
   const master      = getInventoryMaster();
   const toolData    = getToolCodes();
 
@@ -5586,6 +5755,12 @@ function renderInventory(){
       const stock = calcStock(t.code);
       if(siteFilter && stock[siteFilter]===undefined) return;
       if(statusFilter && stock.status!==statusFilter) return;
+      // Search filter — SAP code or tool name
+      if(search){
+        const codeMatch = t.code.toLowerCase().includes(search);
+        const nameMatch = (t.name||'').toLowerCase().includes(search);
+        if(!codeMatch && !nameMatch) return;
+      }
       allTools.push({...t, comp, stock});
     });
   });
@@ -5614,7 +5789,7 @@ function renderInventory(){
     </div>`;
 
   if(!allTools.length){
-    document.getElementById('inv-table-container').innerHTML='<div class="empty"><div class="empty-icon">📦</div><p>No tools match filter.</p></div>';
+    document.getElementById('inv-table-container').innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><p>${search?`No tools found for "<strong>${searchRaw}</strong>"<br/><span style="font-size:11px;color:var(--fog)">Try a different code or name</span>`:'No tools match filter.'}</p></div>`;
     return;
   }
 
