@@ -517,15 +517,45 @@ select option{background:var(--steel);color:var(--white)}
         </div>
       </div>
 
+      <!-- UNIFIED TOOL COST SELECTOR — Unique ID if available, manual condition if not -->
+      <div id="tc-uniqueid-section" style="display:none;margin-bottom:10px">
+
+        <!-- Unique ID dropdown (shows when IDs registered at this site) -->
+        <div id="tc-id-available" style="display:none">
+          <label style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">
+            🔖 Unique Tool ID
+            <span style="font-size:9px;color:var(--fog);font-weight:400;text-transform:none">— select from etching on physical tool</span>
+          </label>
+          <select id="tc-uniqueid" onchange="onTCUniqueIDChange()"
+            style="width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(245,158,11,.4);border-radius:var(--r);padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--amber);-webkit-appearance:none;margin-bottom:6px">
+            <option value="">— Select ID from etching on tool —</option>
+          </select>
+          <!-- Divider -->
+          <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
+            <div style="flex:1;height:1px;background:var(--slate)"></div>
+            <span style="font-size:10px;color:var(--fog)">or select condition manually</span>
+            <div style="flex:1;height:1px;background:var(--slate)"></div>
+          </div>
+        </div>
+
+        <!-- Manual condition selector (always visible as fallback) -->
+        <div id="tc-manual-condition">
+          <label style="font-size:10px;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">
+            🔍 Tool Condition
+            <span style="font-size:9px;color:var(--fog);font-weight:400;text-transform:none">— inspect tool visually and select</span>
+          </label>
+          <div id="tc-condition-btns" style="display:flex;flex-direction:column;gap:5px"></div>
+        </div>
+
+        <!-- Cost info card (auto-fills from either ID or manual selection) -->
+        <div id="tc-cost-card" style="display:none;padding:10px 12px;border-radius:var(--r);margin-top:8px"></div>
+      </div>
+
       <div class="frow">
         <div class="fg">
-          <label>Remarks</label>
+          <label>Remarks <span style="font-size:10px;color:var(--fog);font-weight:400">— Optional</span></label>
           <input id="tc-remarks" placeholder="Optional — any additional notes..."/>
         </div>
-          <div class="fg" style="margin-bottom:10px">
-            <label>Batch / Star Marking <span style="font-size:10px;color:var(--amber);font-weight:600">— Unique ID or batch number from tool</span></label>
-            <input id="tc-remarks2" type="text" placeholder="e.g. ATF-B4-EM16-007 or Batch No. / Star marking from tool..."/>
-          </div>
       </div>
 
       <!-- Submit button -->
@@ -1198,9 +1228,24 @@ function logMachine(ss,d){
 }
 function logToolChange(ss,d){
   var sh=ss.getSheetByName('CPC_Tool_Changes')||ss.insertSheet('CPC_Tool_Changes');
-  if(sh.getLastRow()===0){sh.appendRow(['Date','Site','Shift','Supervisor','Component','Machine','SAP Code','Tool Name','Operation','Make','Std Life','Life Achieved','% of Std','Change Reason','New Tool','Coating Required','Remarks','Logged At']);fmt(sh,18);}
+  if(sh.getLastRow()===0){
+    sh.appendRow(['Date','Site','Shift','Supervisor','Component','Machine',
+      'SAP Code','Tool Name','Operation','Make','Std Life','Life Achieved','% of Std',
+      'Change Reason','New Tool','Coating Required',
+      'Unique ID','Cycle No','Cost Type','Tool Cost (Rs)','Confidence',
+      'Remarks','Logged At']);
+    fmt(sh,23);
+  }
   var pct=d.stdLife>0?Math.round(d.lifeAchieved/d.stdLife*100):'';
-  sh.appendRow([d.date,d.siteName,d.shift,d.supervisor,d.comp,d.machine,d.toolCode,d.toolName,d.operation||'',d.make||'',d.stdLife||'',d.lifeAchieved||'',pct,d.changeReason,d.newToolFitted||'',d.coatingRequired?'Yes':'No',d.remarks||'',new Date().toLocaleString('en-IN')]);
+  sh.appendRow([
+    d.date, d.siteName, d.shift, d.supervisor, d.comp, d.machine,
+    d.toolCode, d.toolName, d.operation||'', d.make||'',
+    d.stdLife||'', d.lifeAchieved||'', pct,
+    d.changeReason, d.newToolFitted||'', d.coatingRequired?'Yes':'No',
+    d.uniqueID||'', d.cycleNum||0, d.costType||'', d.toolCost||0,
+    d.confidence||'unknown',
+    d.remarks||'', new Date().toLocaleString('en-IN')
+  ]);
 }
 function logDCInward(ss,d){
   var sh=ss.getSheetByName('CPC_DC_Inward')||ss.insertSheet('CPC_DC_Inward');
@@ -3174,6 +3219,10 @@ function applyTCTool(t, operation, stdLife){
   det.style.display='block';
   ind.style.display='none';
   document.getElementById('tc-lifeachieved').value='';
+
+  // Populate Unique ID dropdown for this tool
+  populateTCUniqueIDDropdown(t.code);
+
   document.getElementById('tc-lifeachieved').oninput = function(){
     const achieved=parseFloat(this.value)||0;
     const std=parseFloat(stdLife||t.stdLife)||0;
@@ -3193,6 +3242,217 @@ function applyTCTool(t, operation, stdLife){
   };
 }
 
+// ── UNIFIED TOOL COST SELECTOR ────────────────────────────────────────────────
+// Shows Unique ID dropdown if IDs exist at site
+// Always shows manual condition buttons as fallback
+// Both paths produce identical data for CPC calculation
+// ─────────────────────────────────────────────────────────────────────────────
+
+function populateTCUniqueIDDropdown(sapCode){
+  const section   = document.getElementById('tc-uniqueid-section');
+  const idDiv     = document.getElementById('tc-id-available');
+  const manualDiv = document.getElementById('tc-manual-condition');
+  const sel       = document.getElementById('tc-uniqueid');
+  const card      = document.getElementById('tc-cost-card');
+  const btnsDiv   = document.getElementById('tc-condition-btns');
+
+  if(!section) return;
+
+  // Reset
+  card.style.display = 'none';
+  section.style.display = 'block';
+
+  // Get site location for ID filtering
+  const siteEl = document.getElementById('tc-site');
+  const site   = siteEl?.value||'';
+  const loc    = site.includes('site1')?'site1':site.includes('site2')?'site2':'any';
+
+  // Get available unique IDs for this tool at this site
+  const availIDs = isReconditionable(sapCode) ? getIDsAtLocation(sapCode, loc) : [];
+
+  // ── UNIQUE ID DROPDOWN ─────────────────────────────────────────────────────
+  if(availIDs.length > 0){
+    idDiv.style.display = 'block';
+    sel.innerHTML = '<option value="">— Select ID from etching on tool —</option>';
+    availIDs.forEach(tool=>{
+      const cycleNum   = tool.reconCycles||0;
+      const cycleLabel = cycleNum===0?'New tool':`After Recon ${cycleNum}`;
+      const cost       = getPriceForCycle(sapCode, cycleNum);
+      const costLabel  = cost>0?` · ₹${cost.toLocaleString('en-IN')}`:' · price TBD';
+      const opt        = document.createElement('option');
+      opt.value        = tool.id;
+      opt.textContent  = `${tool.id}  (${cycleLabel}${costLabel})`;
+      opt.dataset.cycles   = cycleNum;
+      opt.dataset.cost     = cost;
+      opt.dataset.source   = 'uniqueid';
+      sel.appendChild(opt);
+    });
+    sel.appendChild(new Option('— ID not visible on tool —','unknown'));
+    sel.value = '';
+  } else {
+    idDiv.style.display = 'none';
+  }
+
+  // ── MANUAL CONDITION BUTTONS ───────────────────────────────────────────────
+  // Always shown — either as primary (no IDs) or fallback (IDs exist)
+  const reconPrices = RECON_PRICE_MASTER[sapCode] || [0,0,0,0];
+  const maxRecon    = TOOL_PLANNING[sapCode]?.maxRecon || 3;
+
+  const conditions = [
+    { label:'📦 New Tool — never reground',  cycle:0, cost:reconPrices[0]||0 },
+    { label:'♻️ After 1st Regrinding',        cycle:1, cost:reconPrices[1]||0 },
+    { label:'♻️ After 2nd Regrinding',        cycle:2, cost:reconPrices[2]||0 },
+    { label:'♻️ After 3rd Regrinding',        cycle:3, cost:reconPrices[3]||0 },
+  ].filter(c => c.cycle === 0 || c.cycle <= maxRecon);
+
+  // Add Unknown option
+  conditions.push({ label:'❓ Not sure / Cannot identify', cycle:-1, cost:0 });
+
+  btnsDiv.innerHTML = '';
+  conditions.forEach(cond => {
+    const btn = document.createElement('button');
+    btn.type  = 'button';
+    btn.style.cssText = `width:100%;text-align:left;padding:9px 12px;
+      background:var(--iron);border:1px solid var(--slate);
+      border-radius:var(--r);cursor:pointer;display:flex;
+      align-items:center;justify-content:space-between;transition:all .15s`;
+    btn.innerHTML = `
+      <span style="font-size:12px;color:var(--white);font-family:'Inter',sans-serif">${cond.label}</span>
+      <span style="font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;
+        color:${cond.cycle===0?'#60a5fa':cond.cycle===-1?'var(--fog)':'var(--green)'}">
+        ${cond.cost>0?'₹'+cond.cost.toLocaleString('en-IN'):cond.cycle===-1?'avg cost':'price TBD'}
+      </span>`;
+    btn.onclick = () => selectManualCondition(sapCode, cond, btn);
+    btnsDiv.appendChild(btn);
+  });
+}
+
+// ── Manual condition selected ─────────────────────────────────────────────────
+function selectManualCondition(sapCode, cond, clickedBtn){
+  // Clear Unique ID selection
+  const sel = document.getElementById('tc-uniqueid');
+  if(sel) sel.value = '';
+
+  // Highlight selected button
+  document.querySelectorAll('#tc-condition-btns button').forEach(b=>{
+    b.style.background    = 'var(--iron)';
+    b.style.borderColor   = 'var(--slate)';
+  });
+  clickedBtn.style.background  = cond.cycle===0?'rgba(59,130,246,.12)':
+                                  cond.cycle===-1?'rgba(100,116,139,.12)':'rgba(16,185,129,.12)';
+  clickedBtn.style.borderColor = cond.cycle===0?'rgba(59,130,246,.4)':
+                                  cond.cycle===-1?'rgba(100,116,139,.4)':'rgba(16,185,129,.4)';
+
+  // Store selection for submission
+  window._tcManualCycle = {
+    cycle:     cond.cycle,
+    cost:      cond.cost,
+    costType:  cond.cycle===0?'New Tool':cond.cycle===-1?'Unknown':`Recon ${cond.cycle}`,
+    source:    'manual',
+    confidence: cond.cycle===-1?'unknown':'manual',
+  };
+
+  // Show cost card
+  if(cond.cycle === -1){
+    showCostCard({
+      isNew:false, cycleNum:0, cost:0, remaining:'?',
+      label:'❓ Condition Unknown',
+      note:'Cost will be calculated as average. Update with Unique ID when available.',
+      color:'var(--fog)', bg:'rgba(100,116,139,.08)', border:'rgba(100,116,139,.25)'
+    });
+  } else {
+    const maxRecon  = TOOL_PLANNING[sapCode]?.maxRecon||3;
+    const remaining = maxRecon - cond.cycle;
+    showCostCard({
+      isNew:      cond.cycle===0,
+      cycleNum:   cond.cycle,
+      cost:       cond.cost,
+      remaining,
+      label:      cond.cycle===0?'📦 New Tool':'♻️ Reconditioned Tool',
+      note:       `Manually selected · No Unique ID · ${remaining>0?remaining+' recons remaining':'Last use — scrap after this change'}`,
+      color:      cond.cycle===0?'#60a5fa':'var(--green)',
+      bg:         cond.cycle===0?'rgba(59,130,246,.08)':'rgba(16,185,129,.08)',
+      border:     cond.cycle===0?'rgba(59,130,246,.25)':'rgba(16,185,129,.25)',
+    });
+  }
+}
+
+// ── Unique ID selected from dropdown ─────────────────────────────────────────
+function onTCUniqueIDChange(){
+  const sel  = document.getElementById('tc-uniqueid');
+  const opt  = sel.options[sel.selectedIndex];
+
+  // Clear manual selection
+  document.querySelectorAll('#tc-condition-btns button').forEach(b=>{
+    b.style.background  = 'var(--iron)';
+    b.style.borderColor = 'var(--slate)';
+  });
+  window._tcManualCycle = null;
+
+  if(!sel.value || sel.value==='unknown'){
+    document.getElementById('tc-cost-card').style.display='none';
+    return;
+  }
+
+  const cycleNum  = parseInt(opt.dataset.cycles)||0;
+  const cost      = parseFloat(opt.dataset.cost)||0;
+  const sapCode   = document.getElementById('tc-toolcode')?.value||'';
+  const maxRecon  = TOOL_PLANNING[sapCode]?.maxRecon||3;
+  const remaining = maxRecon - cycleNum;
+
+  showCostCard({
+    isNew:      cycleNum===0,
+    cycleNum,
+    cost,
+    remaining,
+    label:      cycleNum===0?'📦 New Tool — First Use':'♻️ Reconditioned Tool',
+    note:       `Unique ID verified ✅ · ${remaining>0?remaining+' recons remaining':'Last use — scrap after'}`,
+    color:      cycleNum===0?'#60a5fa':'var(--green)',
+    bg:         cycleNum===0?'rgba(59,130,246,.08)':'rgba(16,185,129,.08)',
+    border:     cycleNum===0?'rgba(59,130,246,.25)':'rgba(16,185,129,.25)',
+  });
+}
+
+// ── Shared cost card renderer ─────────────────────────────────────────────────
+function showCostCard({isNew, cycleNum, cost, remaining, label, note, color, bg, border}){
+  const card = document.getElementById('tc-cost-card');
+  card.style.cssText = `display:block;padding:10px 12px;border-radius:var(--r);
+    background:${bg};border:1.5px solid ${border}`;
+
+  const scrapAlert = remaining<=0 ?
+    `<div style="margin-top:6px;padding:5px 8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:5px;font-size:10px;color:var(--red);font-weight:700">
+      ⚠️ LAST USE — Send for SCRAP after this change. Do not regrind again.
+    </div>` : '';
+
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:${color}">${label}</span>
+      ${note?`<span style="font-size:9px;color:var(--fog);margin-left:auto">${note}</span>`:''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:8px 4px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:${color}">
+          ${cost>0?'₹'+cost.toLocaleString('en-IN'):'TBD'}
+        </div>
+        <div style="font-size:9px;color:var(--fog)">${isNew?'New Tool Cost':'Recon Cost'}</div>
+      </div>
+      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:8px 4px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:${color}">
+          ${cycleNum>=0?cycleNum:'?'}
+        </div>
+        <div style="font-size:9px;color:var(--fog)">Recons Done</div>
+      </div>
+      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:8px 4px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;
+          color:${remaining<=0?'var(--red)':remaining==='?'?'var(--fog)':'var(--green)'}">
+          ${remaining<=0?'0 ⚠️':remaining}
+        </div>
+        <div style="font-size:9px;color:var(--fog)">Recons Left</div>
+      </div>
+    </div>
+    ${scrapAlert}`;
+}
+
 function submitToolChange(){
   const site       = document.getElementById('tc-site').value;
   const date       = document.getElementById('tc-date').value;
@@ -3205,7 +3465,37 @@ function submitToolChange(){
   const lifeAch    = parseFloat(document.getElementById('tc-lifeachieved').value)||0;
   const newTool    = document.getElementById('tc-newtool').value;
   const remarks    = document.getElementById('tc-remarks').value;
-  const remarks2   = document.getElementById('tc-remarks2')?.value||'';
+
+  // Unified cost selector — Unique ID takes priority, manual is fallback
+  const uniqueIDSel = document.getElementById('tc-uniqueid');
+  const uniqueIDVal = uniqueIDSel?.value||'';
+  const uniqueIDOpt = uniqueIDSel?.options[uniqueIDSel.selectedIndex];
+  const manualCycle = window._tcManualCycle||null;
+
+  let uniqueID = '', cycleNum = 0, toolCost = 0, costType = '', confidence = 'unknown';
+
+  if(uniqueIDVal && uniqueIDVal !== 'unknown' && uniqueIDVal !== 'none'){
+    // Path A — Unique ID selected
+    uniqueID   = uniqueIDVal;
+    cycleNum   = parseInt(uniqueIDOpt?.dataset?.cycles)||0;
+    toolCost   = parseFloat(uniqueIDOpt?.dataset?.cost)||0;
+    costType   = cycleNum===0 ? 'New Tool' : `Recon ${cycleNum}`;
+    confidence = 'verified';
+  } else if(manualCycle && manualCycle.cycle >= 0){
+    // Path B — Manual condition selected
+    uniqueID   = '';
+    cycleNum   = manualCycle.cycle;
+    toolCost   = manualCycle.cost;
+    costType   = manualCycle.costType;
+    confidence = 'manual';
+  } else if(manualCycle && manualCycle.cycle === -1){
+    // Path C — Unknown condition
+    uniqueID   = '';
+    cycleNum   = -1;
+    toolCost   = 0;
+    costType   = 'Unknown';
+    confidence = 'unknown';
+  }
 
   if(!site)      {showToast('Select site','err');return;}
   if(!date)      {showToast('Select date','err');return;}
@@ -3216,7 +3506,6 @@ function submitToolChange(){
   if(!reason)    {showToast('Select change reason','err');return;}
   if(!supervisor){showToast('Select supervisor','err');return;}
 
-  // Get tool details
   const sel = document.getElementById('tc-toolcode');
   const opt = sel.options[sel.selectedIndex];
   const toolDetails = opt?.dataset?.tool ? JSON.parse(opt.dataset.tool) : {};
@@ -3233,34 +3522,54 @@ function submitToolChange(){
     lifeAchieved:lifeAch,
     changeReason:reason,
     newToolFitted:newTool||toolCode,
+    // Unique ID and cost — for CPC calculation
+    uniqueID:    uniqueID,
+    cycleNum:    cycleNum,
+    costType:    costType,
+    toolCost:    toolCost,
+    confidence:  confidence,  // 'verified' | 'manual' | 'unknown'
     remarks,
-    batchMark: remarks2,
     loggedAt:new Date().toISOString(),
   };
 
+  // Update Unique ID status — mark as used in tool change
+  if(entry.uniqueID && entry.uniqueID!=='unknown'){
+    updateToolID(entry.uniqueID, 'site1', 'tool_change', {
+      date, site, machine, comp,
+      lifeAchieved: lifeAch,
+      cost: toolCost,
+      costType,
+    });
+  }
+
   toolChangeLogs.unshift(entry);
   localStorage.setItem('atf_tc_logs',JSON.stringify(toolChangeLogs));
-
-  // Save sticky data for next entry
   tcStickyData = {site,date,shift,supervisor,component:comp,machine};
 
-  // Queue entry for sync — data is safe even if offline
   if(cpcSettings.sheetsUrl){
     queueAndSync({...entry, type:'TOOL_CHANGE'});
   }
 
-  // Reset only tool-specific fields, keep site/date/shift/supervisor/component/machine
+  // Reset tool-specific fields
   document.getElementById('tc-toolcode').value='';
   document.getElementById('tc-reason').value='';
   document.getElementById('tc-lifeachieved').value='';
   document.getElementById('tc-newtool').value='';
   document.getElementById('tc-remarks').value='';
-  if(document.getElementById('tc-remarks2')) document.getElementById('tc-remarks2').value='';
   document.getElementById('tc-tooldetails').style.display='none';
   document.getElementById('tc-lifeindicator').style.display='none';
+  const uidSec = document.getElementById('tc-uniqueid-section');
+  if(uidSec) uidSec.style.display='none';
+  const costCard = document.getElementById('tc-cost-card');
+  if(costCard) costCard.style.display='none';
+  window._tcManualCycle = null;
+  document.querySelectorAll('#tc-condition-btns button').forEach(b=>{
+    b.style.background='var(--iron)'; b.style.borderColor='var(--slate)';
+  });
 
   renderTCTodayList();
-  showToast('✅ Tool change logged — log next change','ok');
+  const costMsg = toolCost>0 ? ` · ₹${toolCost.toLocaleString('en-IN')} (${costType})` : '';
+  showToast(`✅ Tool change logged${costMsg} — log next change`,'ok');
 }
 
 async function renderTCTodayList(){
