@@ -464,16 +464,10 @@ select option{background:var(--steel);color:var(--white)}
             <label>Operation</label>
             <input id="tc-operation" readonly style="background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25);color:#c4b5fd"/>
           </div>
-          <div class="fg">
-            <label>Make / Grade</label>
-            <input id="tc-make" readonly style="background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25);color:#c4b5fd"/>
-          </div>
+          <div style="display:none"><input id="tc-make" readonly/></div>
         </div>
         <div class="frow">
-          <div class="fg">
-            <label>Standard Life (pcs)</label>
-            <input id="tc-stdlife" readonly style="background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25);color:#c4b5fd"/>
-          </div>
+          <div style="display:none"><input id="tc-stdlife" readonly/></div>
           <div class="fg">
             <label>Life Achieved This Change (pcs) <span class="req">*</span></label>
             <input type="number" id="tc-lifeachieved" placeholder="Actual pcs before change" min="0"/>
@@ -3278,10 +3272,10 @@ function populateTCUniqueIDDropdown(sapCode){
       const cycleNum   = tool.reconCycles||0;
       const cycleLabel = cycleNum===0?'New tool':`After Recon ${cycleNum}`;
       const cost       = getPriceForCycle(sapCode, cycleNum);
-      const costLabel  = cost>0?` · ₹${cost.toLocaleString('en-IN')}`:' · price TBD';
+      // cost stored in dataset.cost — NOT displayed to supervisor
       const opt        = document.createElement('option');
       opt.value        = tool.id;
-      opt.textContent  = `${tool.id}  (${cycleLabel}${costLabel})`;
+      opt.textContent  = `${tool.id}  (${cycleLabel})`;
       opt.dataset.cycles   = cycleNum;
       opt.dataset.cost     = cost;
       opt.dataset.source   = 'uniqueid';
@@ -3320,7 +3314,7 @@ function populateTCUniqueIDDropdown(sapCode){
       <span style="font-size:12px;color:var(--white);font-family:'Inter',sans-serif">${cond.label}</span>
       <span style="font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;
         color:${cond.cycle===0?'#60a5fa':cond.cycle===-1?'var(--fog)':'var(--green)'}">
-        ${cond.cost>0?'₹'+cond.cost.toLocaleString('en-IN'):cond.cycle===-1?'avg cost':'price TBD'}
+        →
       </span>`;
     btn.onclick = () => selectManualCondition(sapCode, cond, btn);
     btnsDiv.appendChild(btn);
@@ -3429,25 +3423,19 @@ function showCostCard({isNew, cycleNum, cost, remaining, label, note, color, bg,
       <span style="font-size:12px;font-weight:700;color:${color}">${label}</span>
       ${note?`<span style="font-size:9px;color:var(--fog);margin-left:auto">${note}</span>`:''}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:8px 4px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:${color}">
-          ${cost>0?'₹'+cost.toLocaleString('en-IN'):'TBD'}
-        </div>
-        <div style="font-size:9px;color:var(--fog)">${isNew?'New Tool Cost':'Recon Cost'}</div>
-      </div>
-      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:8px 4px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:${color}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:10px 4px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:${color}">
           ${cycleNum>=0?cycleNum:'?'}
         </div>
-        <div style="font-size:9px;color:var(--fog)">Recons Done</div>
+        <div style="font-size:9px;color:var(--fog)">Times Reground</div>
       </div>
-      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:8px 4px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;
+      <div style="text-align:center;background:rgba(255,255,255,.04);border-radius:5px;padding:10px 4px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;
           color:${remaining<=0?'var(--red)':remaining==='?'?'var(--fog)':'var(--green)'}">
           ${remaining<=0?'0 ⚠️':remaining}
         </div>
-        <div style="font-size:9px;color:var(--fog)">Recons Left</div>
+        <div style="font-size:9px;color:var(--fog)">Regrinds Left</div>
       </div>
     </div>
     ${scrapAlert}`;
@@ -3568,8 +3556,7 @@ function submitToolChange(){
   });
 
   renderTCTodayList();
-  const costMsg = toolCost>0 ? ` · ₹${toolCost.toLocaleString('en-IN')} (${costType})` : '';
-  showToast(`✅ Tool change logged${costMsg} — log next change`,'ok');
+  showToast('✅ Tool change logged — log next change','ok');
 }
 
 async function renderTCTodayList(){
