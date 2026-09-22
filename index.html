@@ -1142,11 +1142,21 @@ function getSheet(ss,name,date,site,month,year,dc,sc){
   var hdrs=rows[0]; var res=[];
   for(var i=1;i<rows.length;i++){
     var row=rows[i]; var obj={};
-    hdrs.forEach(function(h,j){obj[h]=row[j];});
+    hdrs.forEach(function(h,j){
+      var v=row[j];
+      // Serialize Date objects as YYYY-MM-DD strings so JSON is clean
+      if(v instanceof Date && !isNaN(v.getTime())){
+        var mm=String(v.getMonth()+1).padStart(2,'0');
+        var dd=String(v.getDate()).padStart(2,'0');
+        obj[h]=v.getFullYear()+'-'+mm+'-'+dd;
+      } else {
+        obj[h]=v;
+      }
+    });
     var rd=row[dc]?new Date(row[dc]):null;
-    if(date&&rd){var d=new Date(date);if(rd.toDateString()!==d.toDateString())continue;}
-    if(month&&rd&&(rd.getMonth()+1)!==parseInt(month))continue;
-    if(year&&rd&&rd.getFullYear()!==parseInt(year))continue;
+    if(date&&rd&&!isNaN(rd)){var d=new Date(date);if(rd.toDateString()!==d.toDateString())continue;}
+    if(month&&rd&&!isNaN(rd)&&(rd.getMonth()+1)!==parseInt(month))continue;
+    if(year&&rd&&!isNaN(rd)&&rd.getFullYear()!==parseInt(year))continue;
     if(site&&row[sc]&&!String(row[sc]).toLowerCase().includes(site))continue;
     if(name==='CPC_Raw_Logs'){
       try{obj.machineData=JSON.parse(obj.machineData||'{}');}catch(e){}
@@ -4512,12 +4522,29 @@ const TOOL_PLANNING = {
 async function fetchFromSheets(type, params){
   if(!cpcSettings.sheetsUrl) return null;
   try{
-    const url = new URL(cpcSettings.sheetsUrl);
+    // Ensure URL has /exec suffix (not /dev)
+    let baseUrl = cpcSettings.sheetsUrl.trim();
+    if(baseUrl.includes('/dev')) baseUrl = baseUrl.replace('/dev', '/exec');
+    const url = new URL(baseUrl);
     url.searchParams.set('type', type);
     if(params) Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
-    const resp = await fetch(url.toString(), {method:'GET', mode:'cors'});
-    const data = await resp.json();
-    return data.rows || null;
+    const resp = await fetch(url.toString(), {method:'GET', mode:'cors', redirect:'follow'});
+    if(!resp.ok) { console.log('Sheets fetch HTTP error '+resp.status+' for '+type); return null; }
+    const text = await resp.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e2) { console.log('Sheets JSON parse error for '+type, text.substring(0,200)); return null; }
+    // Normalize date fields — Google Sheets serializes dates as strings or Date objects
+    const rows = data.rows || null;
+    if(rows) rows.forEach(row=>{
+      Object.keys(row).forEach(k=>{
+        const v = row[k];
+        // Convert Google Apps Script date objects (serialized as "Date(year,month,day,...)")
+        if(typeof v === 'string' && v.match(/^Date\(\d/)) {
+          try{ row[k] = new Date(eval(v.replace('Date','new Date'))).toLocaleDateString('en-IN'); }catch(e3){}
+        }
+      });
+    });
+    return rows;
   }catch(e){
     console.log('Sheets fetch failed for '+type, e);
     return null;
@@ -5541,10 +5568,12 @@ async function renderOutHistory(){
       if(!dcMap[key]) dcMap[key]={dcNo:row['DC Number']||'—',date:row['Date']||'',siteName:row['Site']||'',supervisor:row['Supervisor']||'',reason:row['Outward Reason']||'',items:[]};
       dcMap[key].items.push({toolCode:row['SAP Code']||'',qty:row['Qty']||0,coatingRequired:row['Coating Required']==='Yes'});
     });
-    renderOutCards(Object.values(dcMap).slice(0,15));
+    // Sort newest first — no artificial limit
+    const sorted=Object.values(dcMap).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    renderOutCards(sorted);
   } else {
     if(!outLogs.length){c.innerHTML='<div class="empty"><div class="empty-icon">🔄</div><p>No outward entries yet.</p></div>';return;}
-    renderOutCards(outLogs.slice(0,15));
+    renderOutCards([...outLogs].sort((a,b)=>new Date(b.date)-new Date(a.date)));
   }
 }
 
@@ -5577,41 +5606,78 @@ async function initRecon(){
   document.getElementById('recon-send-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('recon-recv-date').value=new Date().toISOString().split('T')[0];
   populateDCDropdowns();
-  populateOutwardDCDropdown();
-  populateReconSendRef();
-  await renderReconHistory();
+  // Run all three in parallel for faster load
+  await Promise.all([
+    populateOutwardDCDropdown(),
+    populateReconSendRef(),
+    renderReconHistory()
+  ]);
 }
 
 async function populateOutwardDCDropdown(){
   const sel=document.getElementById('recon-outward-dc');
   if(!sel)return;
 
-  // Try Sheets first
-  let reconOuts=[];
+  sel.innerHTML='<option value="">⏳ Loading outward DCs…</option>';
+
+  // Build combined DC map from BOTH Sheets (all devices) and localStorage (this device)
+  const dcMap={};
+
+  // ── 1. Fetch from Google Sheets (has all supervisor entries from all phones) ──
   const sheetsData=await fetchFromSheets('outward');
   if(sheetsData&&sheetsData.length){
-    // Group by DC Number, filter reconditioning only
-    const dcMap={};
-    sheetsData.filter(r=>(r['Outward Reason']||'').toLowerCase().includes('recon')).forEach(row=>{
-      const key=row['DC Number']||'';
+    // Accept rows where Outward Reason contains 'recon' (case-insensitive)
+    sheetsData.filter(r=>{
+      const reason=(r['Outward Reason']||r['reason']||'').toLowerCase();
+      return reason.includes('recon');
+    }).forEach(row=>{
+      const key=(row['DC Number']||row['dcNo']||'').trim();
       if(!key)return;
-      if(!dcMap[key]) dcMap[key]={id:key,dcNo:key,siteName:row['Site']||'',date:row['Date']||'',supervisor:row['Supervisor']||'',items:[]};
-      dcMap[key].items.push({toolCode:row['SAP Code']||'',qty:row['Qty']||0,component:row['Component']||'',condition:row['Condition']||'',coatingRequired:row['Coating Required']==='Yes'});
+      if(!dcMap[key]) dcMap[key]={id:key,dcNo:key,siteName:row['Site']||row['siteName']||'',date:row['Date']||row['date']||'',supervisor:row['Supervisor']||row['supervisor']||'',items:[]};
+      // Avoid duplicate items (same DC can have multiple rows for multiple tools)
+      const toolCode=row['SAP Code']||row['toolCode']||'';
+      const alreadyAdded=dcMap[key].items.some(i=>i.toolCode===toolCode&&String(i.qty)===String(row['Qty']||row['qty']||0));
+      if(!alreadyAdded){
+        dcMap[key].items.push({
+          toolCode,
+          qty:row['Qty']||row['qty']||0,
+          component:row['Component']||row['component']||'',
+          condition:row['Condition']||row['condition']||'',
+          coatingRequired:(row['Coating Required']||row['coatingRequired']||'')===('Yes')||row['coatingRequired']===true
+        });
+      }
     });
-    reconOuts=Object.values(dcMap);
-  } else {
-    reconOuts=outLogs.filter(o=>o.reason==='reconditioning');
   }
 
+  // ── 2. Also merge localStorage entries (this device — supervisor's own phone) ──
+  outLogs.filter(o=>o.reason==='reconditioning').forEach(o=>{
+    const key=(o.dcNo||o.id||'').trim();
+    if(!key)return;
+    if(!dcMap[key]){
+      dcMap[key]={id:key,dcNo:key,siteName:o.siteName||o.site||'',date:o.date||'',supervisor:o.supervisor||'',items:o.items||[]};
+    }
+  });
+
+  const reconOuts=Object.values(dcMap).sort((a,b)=>{
+    // Sort newest first by DC number (lexicographic usually works for ATF DC numbering)
+    return String(b.dcNo).localeCompare(String(a.dcNo));
+  });
+
   sel.innerHTML='<option value="">— Select DC from supervisor outward log —</option>';
+
+  if(!reconOuts.length){
+    sel.innerHTML='<option value="">⚠️ No reconditioning DCs found — check Sheets URL in Settings</option>';
+    return;
+  }
+
   reconOuts.forEach(o=>{
     const opt=document.createElement('option');
     opt.value=o.id||o.dcNo;
-    const dateStr=o.date?typeof o.date==='object'?new Date(o.date).toLocaleDateString('en-IN'):o.date:'';
-    const coatCount=o.items.filter(i=>i.coatingRequired).length;
-    opt.textContent=`${o.dcNo} · ${o.siteName} · ${dateStr} · ${o.items.length} tools${coatCount>0?' ('+coatCount+' need coating)':''}`;
-    // Store items data for selection
-    opt.dataset.items=JSON.stringify(o.items);
+    const dateStr=o.date?typeof o.date==='object'?new Date(o.date).toLocaleDateString('en-IN'):String(o.date).substring(0,10):'';
+    const coatCount=(o.items||[]).filter(i=>i.coatingRequired).length;
+    const toolCount=(o.items||[]).length;
+    opt.textContent=`${o.dcNo} · ${o.siteName||'—'} · ${dateStr} · ${toolCount} tool${toolCount!==1?'s':''}${coatCount>0?' ('+coatCount+' need coating)':''}`;
+    opt.dataset.items=JSON.stringify(o.items||[]);
     sel.appendChild(opt);
   });
 }
@@ -5716,7 +5782,15 @@ function submitReconSend(){
   if(!vendor){showToast('Enter vendor name','err');return;}
   if(!svcType){showToast('Select service type','err');return;}
 
-  const entry=outLogs.find(o=>o.id===dcId)||{siteName:'',site:''};
+  // Try localStorage first; if not found (cross-device), extract site from dropdown text
+  let entry=outLogs.find(o=>o.id===dcId||o.dcNo===dcId)||null;
+  if(!entry){
+    const selDC=document.getElementById('recon-outward-dc');
+    const selOpt=selDC?selDC.options[selDC.selectedIndex]:null;
+    const parts=selOpt?selOpt.textContent.split('·'):[];
+    const siteNameFromDropdown=(parts[1]||'').trim();
+    entry={siteName:siteNameFromDropdown,site:siteNameFromDropdown};
+  }
   const items=window._reconCurrentItems||[];
 
   // Get selected tools — re-evaluate coating from master
@@ -5834,24 +5908,62 @@ function onReconToolChange(id,code){const item=reconSendItems.find(i=>i.id===id)
 function updateReconSendItem(id,field,val){const item=reconSendItems.find(i=>i.id===id);if(item)item[field]=parseFloat(val)||0;}
 function removeReconSendItem(id){if(reconSendItems.length===1){showToast('At least one item required','err');return;}reconSendItems=reconSendItems.filter(i=>i.id!==id);renderReconSendItems();}
 
-function populateReconSendRef(){
+async function populateReconSendRef(){
   const sel=document.getElementById('recon-send-ref');
   if(!sel)return;
-  const pending=reconLogs.filter(r=>r.status==='pending');
+  sel.innerHTML='<option value="">⏳ Loading…</option>';
+
+  // Try Sheets first (works across all devices)
+  let pendingList=[];
+  const sheetsData=await fetchFromSheets('recon');
+  if(sheetsData&&sheetsData.length){
+    // Group by Entry ID, keep only Pending
+    const map={};
+    sheetsData.forEach(row=>{
+      const id=row['Entry ID']||'';
+      if(!id)return;
+      if(!map[id]) map[id]={
+        id,vendor:row['Vendor']||'',siteName:row['Site']||'',
+        date:row['Date Sent']||'',expectedReturn:row['Expected Return']||'',
+        status:row['Status']||'Pending',
+        totalNewCost:0,items:[]
+      };
+      map[id].items.push({toolCode:row['SAP Code']||'',qty:row['Qty Sent']||0});
+      map[id].totalNewCost+=parseFloat(row['New Tool Cost (₹)']||row['New Tool Cost']||0)||0;
+    });
+    pendingList=Object.values(map).filter(r=>(r.status||'').toLowerCase().includes('pending'));
+  } else {
+    // Fallback: localStorage
+    pendingList=reconLogs.filter(r=>r.status==='pending');
+  }
+
   sel.innerHTML='<option value="">— Select pending reconditioning —</option>';
-  pending.forEach(r=>{
+  if(!pendingList.length){
+    sel.innerHTML='<option value="">⚠️ No pending recon entries — generate DC first (Send to Vendor tab)</option>';
+    return;
+  }
+
+  pendingList.forEach(r=>{
     const o=document.createElement('option');
     o.value=r.id;
-    o.textContent=`${r.date} · ${r.vendor} · ${r.siteName} · ${r.items?.length||0} tools`;
+    o.textContent=`${String(r.date).substring(0,10)} · ${r.vendor} · ${r.siteName} · ${r.items?.length||0} tools`;
+    o.dataset.recon=JSON.stringify(r);
     sel.appendChild(o);
   });
+
   sel.onchange=function(){
-    const r=reconLogs.find(x=>x.id===sel.value);
+    // Try dataset first (Sheets path), then localStorage
+    const selectedOpt=sel.options[sel.selectedIndex];
+    let r=null;
+    if(selectedOpt&&selectedOpt.dataset.recon){
+      try{r=JSON.parse(selectedOpt.dataset.recon);}catch(e){}
+    }
+    if(!r) r=reconLogs.find(x=>x.id===sel.value);
     const det=document.getElementById('recon-send-ref-details');
     const sav=document.getElementById('recon-savings-display');
     if(!r){det.style.display='none';sav.style.display='none';return;}
     det.style.display='block';
-    det.innerHTML=`Vendor: <strong>${r.vendor}</strong> · Site: ${r.siteName}<br/>Sent: ${r.date}${r.expectedReturn?' · Expected back: '+r.expectedReturn:''}<br/>Tools: ${(r.items||[]).map(i=>i.toolCode+' × '+i.qty).join(', ')}<br/>New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}`;
+    det.innerHTML=`Vendor: <strong>${r.vendor}</strong> · Site: ${r.siteName}<br/>Sent: ${String(r.date).substring(0,10)}${r.expectedReturn?' · Expected back: '+r.expectedReturn:''}<br/>Tools: ${(r.items||[]).map(i=>i.toolCode+' × '+i.qty).join(', ')}<br/>New tool value: ₹${(r.totalNewCost||0).toLocaleString('en-IN')}`;
     const costEl=document.getElementById('recon-cost');
     if(costEl) costEl.oninput=function(){
       const cost=parseFloat(this.value)||0;
@@ -5870,16 +5982,27 @@ function submitReconReceive(){
   if(!refId){showToast('Select the send entry to update','err');return;}
   if(!recvDate){showToast('Enter return date','err');return;}
   if(!cost){showToast('Enter reconditioning cost','err');return;}
-  const r=reconLogs.find(x=>x.id===refId);
-  if(!r){showToast('Entry not found','err');return;}
-  r.status='received';
-  r.receivedDate=recvDate;
-  r.reconCost=cost;
-  r.savings=(r.totalNewCost||0)-cost;
-  r.receiveRemarks=document.getElementById('recon-recv-remarks').value;
-  localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs));
+
+  // Try localStorage first; if not found (entry from another device), build from dropdown dataset
+  let r=reconLogs.find(x=>x.id===refId);
+  if(!r){
+    const selectedOpt=document.getElementById('recon-send-ref').options[document.getElementById('recon-send-ref').selectedIndex];
+    if(selectedOpt&&selectedOpt.dataset.recon){
+      try{r=JSON.parse(selectedOpt.dataset.recon);}catch(e){}
+    }
+  }
+  if(!r){showToast('Entry not found — refresh and try again','err');return;}
+
+  const updated={...r,status:'received',receivedDate:recvDate,reconCost:cost,
+    savings:(r.totalNewCost||0)-cost,
+    receiveRemarks:document.getElementById('recon-recv-remarks').value};
+
+  // Update localStorage if present
+  const idx=reconLogs.findIndex(x=>x.id===refId);
+  if(idx>=0){ reconLogs[idx]={...reconLogs[idx],...updated}; localStorage.setItem('atf_recon_logs',JSON.stringify(reconLogs)); }
+
   if(cpcSettings.sheetsUrl){
-    queueAndSync({...r,type:'RECON_RECEIVE'});
+    queueAndSync({...updated,type:'RECON_RECEIVE'});
   }
   document.getElementById('recon-send-ref').value='';
   document.getElementById('recon-cost').value='';
@@ -5887,7 +6010,7 @@ function submitReconReceive(){
   document.getElementById('recon-send-ref-details').style.display='none';
   document.getElementById('recon-savings-display').style.display='none';
   populateReconSendRef();renderReconHistory();
-  showToast('✅ Tools received — savings ₹'+r.savings.toLocaleString('en-IN'),'ok');
+  showToast('✅ Tools received — savings ₹'+updated.savings.toLocaleString('en-IN'),'ok');
 }
 
 async function renderReconHistory(){
@@ -5909,16 +6032,18 @@ async function renderReconHistory(){
         outwardDcNo:row['Outward DC No']||'', tallyDC:row['Tally DC No']||'',
         status:row['Status']||'Pending',
         receivedDate:row['Date Received']||'',
-        reconCost:parseFloat(row['Recon Cost (₹)'])||0,
-        savings:parseFloat(row['Savings (₹)'])||0,
+        reconCost:parseFloat(row['Recon Cost (₹)']||row['Recon Cost']||0)||0,
+        savings:parseFloat(row['Savings (₹)']||row['Savings']||0)||0,
         totalNewCost:0, items:[], coatingToolsCount:0,
         expectedReturn:row['Expected Return']||''
       };
       map[id].items.push({toolCode:row['SAP Code']||'',qty:row['Qty Sent']||0,coatingRequired:row['Coating Required']==='Yes'});
-      map[id].totalNewCost+=parseFloat(row['New Tool Cost (₹)'])||0;
+      // Handle column names with and without ₹ suffix (Apps Script may vary)
+      map[id].totalNewCost+=parseFloat(row['New Tool Cost (₹)']||row['New Tool Cost']||0)||0;
       if(row['Coating Required']==='Yes') map[id].coatingToolsCount++;
     });
-    list=Object.values(map).slice(0,20);
+    // Show all entries, newest first — no artificial slice limit
+    list=Object.values(map).sort((a,b)=>new Date(b.date)-new Date(a.date));
   } else {
     list=reconLogs.slice(0,20);
   }
