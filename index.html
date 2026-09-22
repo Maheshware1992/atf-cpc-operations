@@ -5564,9 +5564,9 @@ async function renderOutHistory(){
   if(data&&data.length){
     const dcMap={};
     data.forEach(row=>{
-      const key=row['DC Number']||String(Math.random());
-      if(!dcMap[key]) dcMap[key]={dcNo:row['DC Number']||'—',date:row['Date']||'',siteName:row['Site']||'',supervisor:row['Supervisor']||'',reason:row['Outward Reason']||'',items:[]};
-      dcMap[key].items.push({toolCode:row['SAP Code']||'',qty:row['Qty']||0,coatingRequired:row['Coating Required']==='Yes'});
+      const key=(row['DC']||row['DC Number']||row['dcNo']||'').toString().trim()||String(Math.random());
+      if(!dcMap[key]) dcMap[key]={dcNo:row['DC']||row['DC Number']||row['dcNo']||'—',date:row['Date']||row['date']||'',siteName:row['Site']||row['siteName']||'',supervisor:row['Supervisor']||row['supervisor']||'',reason:row['Reason']||row['Outward Reason']||row['reason']||'',items:[]};
+      dcMap[key].items.push({toolCode:row['Sap Code']||row['SAP Code']||row['toolCode']||'',qty:row['Qty']||row['qty']||0,coatingRequired:(row['Coating Required']||row['coatingRequired']||'')==='Yes'||row['coatingRequired']===true});
     });
     // Sort newest first — no artificial limit
     const sorted=Object.values(dcMap).sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -5628,14 +5628,14 @@ async function populateOutwardDCDropdown(){
   if(sheetsData&&sheetsData.length){
     // Accept rows where Outward Reason contains 'recon' (case-insensitive)
     sheetsData.filter(r=>{
-      const reason=(r['Outward Reason']||r['reason']||'').toLowerCase();
+      const reason=(r['Reason']||r['Outward Reason']||r['reason']||'').toLowerCase();
       return reason.includes('recon');
     }).forEach(row=>{
-      const key=(row['DC Number']||row['dcNo']||'').trim();
+      const key=(row['DC']||row['DC Number']||row['dcNo']||'').toString().trim();
       if(!key)return;
       if(!dcMap[key]) dcMap[key]={id:key,dcNo:key,siteName:row['Site']||row['siteName']||'',date:row['Date']||row['date']||'',supervisor:row['Supervisor']||row['supervisor']||'',items:[]};
       // Avoid duplicate items (same DC can have multiple rows for multiple tools)
-      const toolCode=row['SAP Code']||row['toolCode']||'';
+      const toolCode=row['Sap Code']||row['SAP Code']||row['toolCode']||'';
       const alreadyAdded=dcMap[key].items.some(i=>i.toolCode===toolCode&&String(i.qty)===String(row['Qty']||row['qty']||0));
       if(!alreadyAdded){
         dcMap[key].items.push({
