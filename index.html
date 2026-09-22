@@ -3588,7 +3588,7 @@ async function renderTCTodayList(){
       supervisor:   row['Supervisor']||'',
       comp:         row['Component']||'',
       machine:      row['Machine']||'',
-      toolCode:     row['SAP Code']||'',
+      toolCode:     row['Sap Code']||row['SAP Code']||row['toolCode']||'',
       toolName:     row['Tool Name']||'',
       operation:    row['Operation']||'',
       make:         row['Make']||'',
@@ -4658,7 +4658,7 @@ async function renderDCHistory(){
         totalValue:0, items:[]
       };
       dcMap[key].items.push({
-        toolCode:row['SAP Code']||'',
+        toolCode:row['Sap Code']||row['SAP Code']||row['toolCode']||'',
         qty:row['Qty']||0,
         coatingRequired:row['Coating Required']==='Yes'
       });
@@ -5649,10 +5649,27 @@ async function populateOutwardDCDropdown(){
     });
   }
 
-  // ── 2. Also merge localStorage entries (this device — supervisor's own phone) ──
+  // ── 2. Exclude outward DCs already sent to a recon vendor (central Sheets is authoritative) ──
+  const reconData=await fetchFromSheets('recon');
+  const processedDCs=new Set();
+  if(reconData&&reconData.length){
+    reconData.forEach(row=>{
+      const dc=(row['Outward DC No']||row['Outward DC']||row['outwardDcNo']||'').toString().trim();
+      if(dc) processedDCs.add(dc);
+    });
+  } else {
+    // Offline fallback only
+    reconLogs.forEach(r=>{
+      const dc=(r.outwardDcNo||r.outwardDcId||'').toString().trim();
+      if(dc) processedDCs.add(dc);
+    });
+  }
+  processedDCs.forEach(dc=>delete dcMap[dc]);
+
+  // ── 3. Also merge localStorage entries only as an offline fallback ──
   outLogs.filter(o=>o.reason==='reconditioning').forEach(o=>{
     const key=(o.dcNo||o.id||'').trim();
-    if(!key)return;
+    if(!key||processedDCs.has(key))return;
     if(!dcMap[key]){
       dcMap[key]={id:key,dcNo:key,siteName:o.siteName||o.site||'',date:o.date||'',supervisor:o.supervisor||'',items:o.items||[]};
     }
@@ -5782,14 +5799,14 @@ function submitReconSend(){
   if(!vendor){showToast('Enter vendor name','err');return;}
   if(!svcType){showToast('Select service type','err');return;}
 
-  // Try localStorage first; if not found (cross-device), extract site from dropdown text
-  let entry=outLogs.find(o=>o.id===dcId||o.dcNo===dcId)||null;
-  if(!entry){
-    const selDC=document.getElementById('recon-outward-dc');
-    const selOpt=selDC?selDC.options[selDC.selectedIndex]:null;
-    const parts=selOpt?selOpt.textContent.split('·'):[];
-    const siteNameFromDropdown=(parts[1]||'').trim();
-    entry={siteName:siteNameFromDropdown,site:siteNameFromDropdown};
+  // Use the selected central-Sheets option as the primary source; localStorage is fallback only
+  const selDC=document.getElementById('recon-outward-dc');
+  const selOpt=selDC?selDC.options[selDC.selectedIndex]:null;
+  const parts=selOpt?selOpt.textContent.split('·'):[];
+  const siteNameFromDropdown=(parts[1]||'').trim();
+  let entry={siteName:siteNameFromDropdown,site:siteNameFromDropdown};
+  if(!siteNameFromDropdown){
+    entry=outLogs.find(o=>o.id===dcId||o.dcNo===dcId)||entry;
   }
   const items=window._reconCurrentItems||[];
 
@@ -5928,7 +5945,7 @@ async function populateReconSendRef(){
         status:row['Status']||'Pending',
         totalNewCost:0,items:[]
       };
-      map[id].items.push({toolCode:row['SAP Code']||'',qty:row['Qty Sent']||0});
+      map[id].items.push({toolCode:row['Sap Code']||row['SAP Code']||row['toolCode']||'',qty:row['Qty Sent']||row['Qty']||row['qty']||0});
       map[id].totalNewCost+=parseFloat(row['New Tool Cost (₹)']||row['New Tool Cost']||0)||0;
     });
     pendingList=Object.values(map).filter(r=>(r.status||'').toLowerCase().includes('pending'));
@@ -5983,14 +6000,13 @@ function submitReconReceive(){
   if(!recvDate){showToast('Enter return date','err');return;}
   if(!cost){showToast('Enter reconditioning cost','err');return;}
 
-  // Try localStorage first; if not found (entry from another device), build from dropdown dataset
-  let r=reconLogs.find(x=>x.id===refId);
-  if(!r){
-    const selectedOpt=document.getElementById('recon-send-ref').options[document.getElementById('recon-send-ref').selectedIndex];
-    if(selectedOpt&&selectedOpt.dataset.recon){
-      try{r=JSON.parse(selectedOpt.dataset.recon);}catch(e){}
-    }
+  // Use the central-Sheets dropdown payload first; localStorage is offline fallback only
+  const selectedOpt=document.getElementById('recon-send-ref').options[document.getElementById('recon-send-ref').selectedIndex];
+  let r=null;
+  if(selectedOpt&&selectedOpt.dataset.recon){
+    try{r=JSON.parse(selectedOpt.dataset.recon);}catch(e){}
   }
+  if(!r) r=reconLogs.find(x=>x.id===refId);
   if(!r){showToast('Entry not found — refresh and try again','err');return;}
 
   const updated={...r,status:'received',receivedDate:recvDate,reconCost:cost,
@@ -6037,7 +6053,7 @@ async function renderReconHistory(){
         totalNewCost:0, items:[], coatingToolsCount:0,
         expectedReturn:row['Expected Return']||''
       };
-      map[id].items.push({toolCode:row['SAP Code']||'',qty:row['Qty Sent']||0,coatingRequired:row['Coating Required']==='Yes'});
+      map[id].items.push({toolCode:row['Sap Code']||row['SAP Code']||row['toolCode']||'',qty:row['Qty Sent']||row['Qty']||row['qty']||0,coatingRequired:row['Coating Required']==='Yes'});
       // Handle column names with and without ₹ suffix (Apps Script may vary)
       map[id].totalNewCost+=parseFloat(row['New Tool Cost (₹)']||row['New Tool Cost']||0)||0;
       if(row['Coating Required']==='Yes') map[id].coatingToolsCount++;
